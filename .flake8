@@ -1,0 +1,7 @@
+[flake8]
+application_import_names = api
+import-order-style = google
+inline-quotes = double
+max-expression-complexity=8
+ignore-django-orm-queries-complexity=True
+exclude = .venv,venv,*/migrations/*,.git,__pycache__
