@@ -21,7 +21,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
+    "sorl.thumbnail",
+    "django_cleanup.apps.CleanupConfig",
     "api.apps.ApiConfig",
+    "catalog.apps.CatalogConfig",
 ]
 
 MIDDLEWARE = [
@@ -106,7 +109,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "ru"
 
 TIME_ZONE = "UTC"
 
@@ -114,6 +117,8 @@ USE_I18N = True
 
 USE_TZ = True
 
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
 
 STATIC_URL = "static/"
 

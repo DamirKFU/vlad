@@ -1,5 +1,5 @@
 [flake8]
-application_import_names = api
+application_import_names = api, catalog
 import-order-style = google
 inline-quotes = double
 max-expression-complexity=8
