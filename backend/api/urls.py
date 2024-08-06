@@ -1,15 +1,13 @@
 import django.urls
 import rest_framework_simplejwt.views
 
-import api.views
-
 app_name = "api"
 
 urlpatterns = [
     django.urls.path(
-        "user/register/",
-        api.views.CrateUserView.as_view(),
-        name="register",
+        "users/",
+        django.urls.include("users.urls"),
+        name="users",
     ),
     django.urls.path(
         "token/",

@@ -12,6 +12,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+DEFAULT_VERIFED_EMAIL = False
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -25,6 +27,7 @@ INSTALLED_APPS = [
     "django_cleanup.apps.CleanupConfig",
     "api.apps.ApiConfig",
     "catalog.apps.CatalogConfig",
+    "users.apps.UsersConfig",
 ]
 
 MIDDLEWARE = [
@@ -43,7 +46,7 @@ ROOT_URLCONF = "backend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -108,6 +111,21 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+AUTH_USER_MODEL = "users.User"
+
+AUTHENTICATION_BACKENDS = ["users.backends.EmailUsernameBackend"]
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.yandex.ru"
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+
+EMAIL_HOST_USER = "Damir.DeBug@yandex.ru"
+EMAIL_HOST_PASSWORD = "aukqrygbsvpogpbs"
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+SERVER_EMAIL = EMAIL_HOST_USER
+EMAIL_ADMIN = EMAIL_HOST_USER
 
 LANGUAGE_CODE = "ru"
 
