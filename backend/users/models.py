@@ -1,5 +1,3 @@
-import pathlib
-
 import django.contrib.auth.models
 import django.db.models
 
@@ -38,10 +36,6 @@ class UserManager(django.contrib.auth.models.UserManager):
 
 
 class User(django.contrib.auth.models.AbstractUser):
-    def get_path_image(self, filename):
-        ext = pathlib.Path(filename).suffix
-        return f"users/{self.id}/avatar{ext}"
-
     objects = UserManager()
 
     username = django.db.models.CharField(
