@@ -23,14 +23,10 @@ class UserSerializer(rest_framework.serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        user = users.models.User.objects.create_user(
+        return users.models.User.objects.create_user(
             **validated_data,
             verified_email=django.conf.settings.DEFAULT_VERIFED_EMAIL,
         )
-        user.verified_email = django.conf.settings.DEFAULT_VERIFED_EMAIL
-        user.save()
-
-        return user
 
 
 class EmailTokenSerializer(rest_framework.serializers.Serializer):

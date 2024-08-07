@@ -59,6 +59,7 @@ class User(django.contrib.auth.models.AbstractUser):
 
     verified_email = django.db.models.BooleanField(
         "подтвержденный адрес электронной почты",
+        default=False,
     )
 
     class Meta(django.contrib.auth.models.AbstractUser.Meta):

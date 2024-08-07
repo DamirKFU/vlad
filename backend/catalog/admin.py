@@ -1,22 +1,6 @@
 from django.contrib import admin
-from sorl.thumbnail.admin import AdminImageMixin
 
 import catalog.models
-
-
-class TShirtMainImageInline(AdminImageMixin, admin.TabularInline):
-    fields = ["image"]
-    model = catalog.models.TShirtMainImage
-
-
-class EmbroideryMainImageInline(AdminImageMixin, admin.TabularInline):
-    fields = ["image"]
-    model = catalog.models.EmbroideryMainImage
-
-
-class EmbroiderySecondaryImageInline(AdminImageMixin, admin.TabularInline):
-    fields = ["image"]
-    model = catalog.models.EmbroiderySecondaryImage
 
 
 @admin.register(catalog.models.Category)
@@ -39,18 +23,11 @@ class TShirtAdmin(admin.ModelAdmin):
         catalog.models.TShirt.count.field.name,
     )
     list_display_links = (catalog.models.TShirt.id.field.name,)
-
-    inlines = [
-        TShirtMainImageInline,
-    ]
+    readonly_fields = (catalog.models.TShirt.image_tmb.field_name,)
 
 
 @admin.register(catalog.models.Embroidery)
 class EmbroideryAdmin(admin.ModelAdmin):
     list_display = (catalog.models.Embroidery.name.field.name,)
     list_display_links = (catalog.models.Embroidery.name.field.name,)
-
-    inlines = [
-        EmbroideryMainImageInline,
-        EmbroiderySecondaryImageInline,
-    ]
+    readonly_fields = (catalog.models.TShirt.image_tmb.field_name,)
