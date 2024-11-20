@@ -1,4 +1,4 @@
-# Django project
+# Vlad's project
 
 ## By "ВышивАрт"
 
