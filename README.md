@@ -7,7 +7,7 @@
 1. Clone the repo
 
    ```bash
-   git clone git@gitlab.crja72.ru:django/2024/spring/course/students/199049-sahbievdg-course-1112.git
+   git clone https://github.com/DamirKFU/vlad.git
    ```
 
 2. Go to working directory
