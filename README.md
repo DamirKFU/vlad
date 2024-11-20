@@ -7,7 +7,6 @@
 1. Clone the repo
 
    ```bash
-   g
    git clone https://github.com/DamirKFU/vlad.git
    ```
 
