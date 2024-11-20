@@ -4,7 +4,7 @@
 
 ### backend
 
-#### Prerequisites
+#### Prerequisites Python
 
 1. Install Python:3.10
     * download link
@@ -13,14 +13,20 @@
     https://www.python.org/downloads/release/python-3100/
     ```
 
-2. Create virtual environment
+2. Go to working directory
+
+    ```bash
+        cd backend
+    ```
+
+3. Create virtual environment
     * python
 
     ```bash
     python -m venv venv
     ```
 
-3. Activate virtual environment
+4. Activate virtual environment
     * windows
 
     ```bash
@@ -33,7 +39,7 @@
     source venv/bin/activate
     ```
 
-4. Upgrade pip
+5. Upgrade pip
     * python
 
     ```bash
@@ -67,56 +73,12 @@
     pip install -r requirements/dev.txt
     ```
 
-3. Use your configuration in .env.example
-    * windows
-
-    ```bash
-    copy .env.example .env
-    ```
-
-    * linux
-
-    ```bash
-    cp .env.example .env
-    ```
-
-4. Migrate db.sqllite3
+3. Migrate db.sqllite3
     * python
 
     ```bash
     python manage.py makemigrations
     python manage.py migrate
-    ```
-
-5. Load fixtures
-    * python
-
-    ```bash
-    python manage.py loaddata fixtures/data.json
-    ```
-
-#### Make translation
-
-1. Create translation
-
-    ```bash
-    django-admin makemessages -l "language"
-    ```
-
-2. Edit translation file using a text editor: "lyceum/locale/language/LC_MESSAGES/django.po"
-
-3. Сompile translation file
-
-    ```bash
-    django-admin compilemessages
-    ```
-
-#### Static collection
-
-* python
-
-    ```bash
-    python manage.py collectstatic
     ```
 
 #### Start
@@ -134,3 +96,26 @@
     сd lyceum
     python manage.py test
     ```
+
+### frontend
+
+#### Prerequisites Node.js
+
+1. Install Node.js:22.11.0
+    * download link
+
+    ```url
+    https://nodejs.org/en/download/prebuilt-installer
+    ```
+
+2. Go to working directory
+
+    ```bash
+        cd frontend
+    ```
+
+#### Start Node.js
+
+```bash
+npm start
+```
