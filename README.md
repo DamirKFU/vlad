@@ -2,6 +2,20 @@
 
 ## By "ВышивАрт"
 
+### Installation
+
+1. Clone the repo
+
+   ```bash
+   git clone git@gitlab.crja72.ru:django/2024/spring/course/students/199049-sahbievdg-course-1112.git
+   ```
+
+2. Go to working directory
+
+    ```bash
+    cd vlad
+    ```
+
 ### backend
 
 #### Prerequisites Python
@@ -16,7 +30,7 @@
 2. Go to working directory
 
     ```bash
-        cd backend
+    cd backend
     ```
 
 3. Create virtual environment
@@ -46,15 +60,9 @@
     python -m pip install --upgrade pip
     ```
 
-#### Installation
+#### Installation requirements
 
-1. Clone the repo
-
-   ```bash
-   git clone git@gitlab.crja72.ru:django/2024/spring/course/students/199049-sahbievdg-course-1112.git
-   ```
-
-2. Install requirements
+1. Install requirements
     * production
 
     ```bash
@@ -67,13 +75,7 @@
     pip install -r requirements/test.txt
     ```
 
-    * development
-
-    ```bash
-    pip install -r requirements/dev.txt
-    ```
-
-3. Migrate db.sqllite3
+2. Migrate db.sqllite3
     * python
 
     ```bash
@@ -111,7 +113,7 @@
 2. Go to working directory
 
     ```bash
-        cd frontend
+    cd frontend
     ```
 
 #### Start Node.js
