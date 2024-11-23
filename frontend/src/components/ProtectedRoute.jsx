@@ -3,23 +3,22 @@ import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import { REFRESH_TOKEN, ACCESS_TOKEN } from "../constants";
 import { useState, useEffect } from "react";
-
+import Cookies from 'js-cookie';
 
 function ProtectedRoute({ children }) {
     const [isAuthorized, setIsAuthorized] = useState(null);
 
     useEffect(() => {
         auth().catch(() => setIsAuthorized(false))
-    }, [])
+    })
 
     const refreshToken = async () => {
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN);
+        const refreshToken = Cookies.get(REFRESH_TOKEN);
         try {
             const res = await api.post("/api/token/refresh/", {
                 refresh: refreshToken,
-            });
+            }, {withCredentials: true});
             if (res.status === 200) {
-                localStorage.setItem(ACCESS_TOKEN, res.data.access)
                 setIsAuthorized(true)
             } else {
                 setIsAuthorized(false)
@@ -31,7 +30,7 @@ function ProtectedRoute({ children }) {
     };
 
     const auth = async () => {
-        const token = localStorage.getItem(ACCESS_TOKEN);
+        const token = Cookies.get(ACCESS_TOKEN);
         if (!token) {
             setIsAuthorized(false);
             return;
@@ -43,6 +42,7 @@ function ProtectedRoute({ children }) {
         if (tokenExpiration < now) {
             await refreshToken();
         } else {
+            await refreshToken();
             setIsAuthorized(true);
         }
     };

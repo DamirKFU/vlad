@@ -1,13 +1,16 @@
 import React from "react"
 import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom"
+import { REFRESH_TOKEN, ACCESS_TOKEN } from "./constants";
 import Login from "./pages/Login"
 import Home from "./pages/Home"
 import Register from "./pages/Register"
 import Http404 from "./pages/Http404"
 import ProtectedRoute from "./components/ProtectedRoute"
+import Cookies from 'js-cookie';
 
 function Logout() {
-  localStorage.clear()
+  Cookies.remove(REFRESH_TOKEN);
+  Cookies.remove(ACCESS_TOKEN);
   return <Navigate to="/login"/>
 }
 

@@ -1,11 +1,9 @@
 import { useState } from "react";
-import api from "../api";
 import "../styles/Home.css"
 
 function Home() {
     const [content, setContent] = useState("");
     const [title, setTitle] = useState("");
-
     return (
         <div>
             <div>
