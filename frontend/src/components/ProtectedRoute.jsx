@@ -2,34 +2,29 @@ import { Navigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import { REFRESH_TOKEN, ACCESS_TOKEN } from "../constants";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Cookies from 'js-cookie';
 
-function ProtectedRoute({ children }) {
+const ProtectedRoute = React.memo(({ children }) => {
     const [isAuthorized, setIsAuthorized] = useState(null);
-
-    useEffect(() => {
-        auth().catch(() => setIsAuthorized(false))
-    })
-
-    const refreshToken = async () => {
+    const refreshToken = useCallback(async () => {
         const refreshToken = Cookies.get(REFRESH_TOKEN);
         try {
             const res = await api.post("/token/refresh/", {
                 refresh: refreshToken,
-            }, {withCredentials: true});
+            }, { withCredentials: true });
             if (res.status === 200) {
-                setIsAuthorized(true)
+                setIsAuthorized(true);
             } else {
-                setIsAuthorized(false)
+                setIsAuthorized(false);
             }
         } catch (error) {
             console.log(error);
             setIsAuthorized(false);
         }
-    };
+    }, []);
 
-    const auth = async () => {
+    const auth = useCallback(async () => {
         const token = Cookies.get(ACCESS_TOKEN);
         if (!token) {
             setIsAuthorized(false);
@@ -42,16 +37,19 @@ function ProtectedRoute({ children }) {
         if (tokenExpiration < now) {
             await refreshToken();
         } else {
-            await refreshToken();
             setIsAuthorized(true);
         }
-    };
+    }, [refreshToken]);
+
+    useEffect(() => {
+        auth().catch(() => setIsAuthorized(false))
+    }, [auth])
 
     if (isAuthorized === null) {
         return <div>Loading...</div>;
     }
 
     return isAuthorized ? children : <Navigate to="/login" />;
-}
+})
 
 export default ProtectedRoute;

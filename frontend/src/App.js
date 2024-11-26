@@ -15,7 +15,8 @@ function Logout() {
 }
 
 function RegisterAndLogout() {
-  localStorage.clear()
+  Cookies.remove(REFRESH_TOKEN);
+  Cookies.remove(ACCESS_TOKEN);
   return <Register />
 }
 
