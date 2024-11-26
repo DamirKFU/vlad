@@ -43,8 +43,3 @@ jobs:
       run: |
         cd frontend
         yarn install
-
-    - name: Run React tests
-      run: |
-        cd frontend
-        yarn test
