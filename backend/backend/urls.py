@@ -15,11 +15,6 @@ urlpatterns = [
         django.urls.include("api.urls"),
         name="api",
     ),
-    django.urls.path(
-        "api-auth/",
-        django.urls.include("rest_framework.urls"),
-        name="rest_framework-auth",
-    ),
 ]
 
 

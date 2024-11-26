@@ -3,7 +3,7 @@ import { ACCESS_TOKEN } from "./constants"
 import Cookies from 'js-cookie';
 
 const api = axios.create({
-    baseURL: "http://localhost:8000/"
+    baseURL: "http://localhost:8000/api/"
 })
 
 api.interceptors.request.use(

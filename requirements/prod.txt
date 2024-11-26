@@ -5,3 +5,4 @@ django-cors-headers==4.4.0
 django-cleanup==8.1.0
 sorl-thumbnail==12.10.0
 pillow==10.2.0
+python-dotenv==1.0.1

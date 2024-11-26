@@ -15,7 +15,7 @@ function ProtectedRoute({ children }) {
     const refreshToken = async () => {
         const refreshToken = Cookies.get(REFRESH_TOKEN);
         try {
-            const res = await api.post("/api/token/refresh/", {
+            const res = await api.post("/token/refresh/", {
                 refresh: refreshToken,
             }, {withCredentials: true});
             if (res.status === 200) {
