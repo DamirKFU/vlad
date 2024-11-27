@@ -22,8 +22,8 @@ urlpatterns = [
         name="refresh",
     ),
     django.urls.path(
-        "api-auth/",
-        django.urls.include("rest_framework.urls"),
-        name="rest_framework-auth",
+        "get-csrf-token/",
+        api.views.GetCSRFTokenView.as_view(),
+        name="get-csrf-token",
     ),
 ]
