@@ -23,9 +23,9 @@
 1. Install Python:3.10
     * download link
 
-    ```url
-    https://www.python.org/downloads/release/python-3100/
-    ```
+        ```url
+        https://www.python.org/downloads/release/python-3100/
+        ```
 
 2. Go to working directory
 
@@ -36,51 +36,59 @@
 3. Create virtual environment
     * python
 
-    ```bash
-    python -m venv venv
-    ```
+        ```bash
+        python -m venv venv
+        ```
 
 4. Activate virtual environment
     * windows
 
-    ```bash
-    .\venv\Scripts\activate
-    ```
+        ```bash
+        .\venv\Scripts\activate
+        ```
 
     * linux
 
-    ```bash
-    source venv/bin/activate
-    ```
+        ```bash
+        source venv/bin/activate
+        ```
 
 5. Upgrade pip
     * python
 
-    ```bash
-    python -m pip install --upgrade pip
-    ```
+        ```bash
+        python -m pip install --upgrade pip
+        ```
 
 #### Installation requirements
 
 1. Install requirements
     * production
 
-    ```bash
-    pip install -r requirements/prod.txt
-    ```
+        ```bash
+        pip install -r requirements/prod.txt
+        ```
 
     * test
 
-    ```bash
-    pip install -r requirements/test.txt
-    ```
+        ```bash
+        pip install -r requirements/test.txt
+        ```
 
 2. Migrate db.sqllite3
     * python
 
+        ```bash
+        python manage.py makemigrations
+        python manage.py migrate
+        ```
+
+#### Static collection
+
+* python
+
     ```bash
-    python manage.py makemigrations
-    python manage.py migrate
+    python manage.py collectstatic
     ```
 
 #### Start
@@ -106,9 +114,9 @@
 1. Install Node.js:22.11.0
     * download link
 
-    ```url
-    https://nodejs.org/en/download/prebuilt-installer
-    ```
+        ```url
+        https://nodejs.org/en/download/prebuilt-installer
+        ```
 
 2. Go to working directory
 

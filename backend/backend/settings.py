@@ -114,7 +114,7 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://localhost"]
 CSRF_COOKIE_AGE = 3600
 
 AUTH_USER_MODEL = "users.User"
@@ -144,6 +144,8 @@ USE_TZ = True
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
 
-STATIC_URL = "static/"
+STATIC_URL = "static/django/"
+
+STATIC_ROOT = "../staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
