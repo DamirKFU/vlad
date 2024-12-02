@@ -37,12 +37,11 @@ class CustomTokenRefreshView(rest_framework_simplejwt.views.TokenRefreshView):
 
 
 @django.utils.decorators.method_decorator(
-    django.views.decorators.csrf.csrf_exempt, name="dispatch"
+    django.views.decorators.csrf.ensure_csrf_cookie, name="dispatch"
 )
 class GetCSRFTokenView(rest_framework.generics.GenericAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     http_method_names = ["get"]
 
     def get(self, request, *args, **kwargs):
-        django.middleware.csrf.get_token(request)
         return rest_framework.response.Response({}, status=200)
