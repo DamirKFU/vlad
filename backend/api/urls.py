@@ -12,16 +12,6 @@ urlpatterns = [
         name="users",
     ),
     django.urls.path(
-        "token/",
-        api.views.CustomTokenObtainPairView.as_view(),
-        name="get_token",
-    ),
-    django.urls.path(
-        "token/refresh/",
-        api.views.CustomTokenRefreshView.as_view(),
-        name="refresh",
-    ),
-    django.urls.path(
         "get-csrf-token/",
         api.views.GetCSRFTokenView.as_view(),
         name="get-csrf-token",

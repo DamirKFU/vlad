@@ -1,4 +1,5 @@
 import django.conf
+import django.contrib.auth
 import django.contrib.messages
 import django.core.mail
 import django.core.signing
@@ -72,4 +73,47 @@ class CheckEmailTokenView(rest_framework.views.APIView):
         return rest_framework.response.Response(
             serializer.data,
             status=rest_framework.status.HTTP_406_NOT_ACCEPTABLE,
+        )
+
+
+class LoginView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        user = django.contrib.auth.authenticate(
+            request, username=username, password=password
+        )
+        if user is not None:
+            django.contrib.auth.login(request, user)
+            return rest_framework.response.Response(
+                {"message": "Login successful"},
+                status=rest_framework.status.HTTP_200_OK,
+            )
+
+        return rest_framework.response.Response(
+            {"message": "Invalid credentials"},
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class LogoutView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        django.contrib.auth.logout(request)
+        return rest_framework.response.Response(
+            {"message": "Logout successful"},
+            status=rest_framework.status.HTTP_200_OK,
+        )
+
+
+class IsAuthView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        return rest_framework.response.Response(
+            {"message": "You auth"},
+            status=rest_framework.status.HTTP_200_OK,
         )

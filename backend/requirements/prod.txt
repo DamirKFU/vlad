@@ -1,7 +1,5 @@
 django==4.2.16
 PyJWT==2.9
-djangorestframework-simplejwt==5.3.1
-django-cors-headers==4.4.0
 django-cleanup==8.1.0
 sorl-thumbnail==12.10.0
 pillow==10.2.0

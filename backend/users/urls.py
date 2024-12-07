@@ -16,6 +16,21 @@ urlpatterns = [
         name="register",
     ),
     django.urls.path(
+        "login/",
+        users.views.LoginView.as_view(),
+        name="login",
+    ),
+    django.urls.path(
+        "logout/",
+        users.views.LogoutView.as_view(),
+        name="logout",
+    ),
+    django.urls.path(
+        "is_auth/",
+        users.views.IsAuthView.as_view(),
+        name="is_auth",
+    ),
+    django.urls.path(
         "verifed-email/",
         users.views.VerifedEmailTokenView.as_view(),
         name="verifed_email",

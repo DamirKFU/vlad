@@ -7,6 +7,7 @@ import LoadingIndicator from "./LoadingIndicator";
 function Form({ route, method }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
@@ -15,10 +16,11 @@ function Form({ route, method }) {
         setLoading(true);
         e.preventDefault();
         try {
-            await api.post(route, { username, password }, {withCredentials: true})
             if (method === "login") {
+                await api.post(route, { username, password }, {withCredentials: true})
                 navigate("/")
             } else {
+                await api.post(route, { username, password, email }, {withCredentials: true})
                 navigate("/login")
             }
         } catch (error) {
@@ -38,6 +40,16 @@ function Form({ route, method }) {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Username"
             />
+            {method === "register" && (
+                <input
+                    className="form-input"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email"
+                    required
+                />
+            )}
             <input
                 className="form-input"
                 type="password"

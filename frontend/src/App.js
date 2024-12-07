@@ -7,10 +7,10 @@ import Register from "./pages/Register"
 import Http404 from "./pages/Http404"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
+import api from "./api";
 
 function Logout() {
-  Cookies.remove(REFRESH_TOKEN);
-  Cookies.remove(ACCESS_TOKEN);
+  api.post("users/logout/")
   return <Navigate to="/login"/>
 }
 

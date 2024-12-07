@@ -53,8 +53,8 @@ class User(django.contrib.auth.models.AbstractUser):
 
     email = django.db.models.EmailField(
         "email address",
-        blank=True,
         unique=True,
+        null=False,
     )
 
     verified_email = django.db.models.BooleanField(

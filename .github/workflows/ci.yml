@@ -25,7 +25,13 @@ jobs:
       run: |
         cd backend
         python -m pip install --upgrade pip
-        pip install -r requirements/prod.txt
+        pip install -r requirements/test.txt
+    
+    - name: linting
+      run: |
+        cd backend
+        - flake8 --verbose .
+        - black --config pyproject.toml --check --verbose -- .
 
     - name: Run Django tests
       env:
