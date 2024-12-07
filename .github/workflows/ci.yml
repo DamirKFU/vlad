@@ -31,7 +31,7 @@ jobs:
       run: |
         cd backend
         flake8 --verbose .
-        black --config pyproject.toml --check --verbose -- .
+        black --check --verbose -- .
 
     - name: Run Django tests
       env:
