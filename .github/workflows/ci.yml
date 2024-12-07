@@ -30,8 +30,8 @@ jobs:
     - name: linting
       run: |
         cd backend
-        - flake8 --verbose .
-        - black --config pyproject.toml --check --verbose -- .
+        flake8 --verbose .
+        black --config pyproject.toml --check --verbose -- .
 
     - name: Run Django tests
       env:
