@@ -76,16 +76,14 @@ class CheckEmailTokenView(rest_framework.views.APIView):
         )
 
 
-class LoginView(rest_framework.views.APIView):
+class LoginView(rest_framework.generics.GenericAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
+    serializer_class = users.serializers.LoginSerializer
 
     def post(self, request, *args, **kwargs):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        user = django.contrib.auth.authenticate(
-            request, username=username, password=password
-        )
-        if user is not None:
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data["user"]
             django.contrib.auth.login(request, user)
             return rest_framework.response.Response(
                 {"message": "Login successful"},
@@ -93,7 +91,7 @@ class LoginView(rest_framework.views.APIView):
             )
 
         return rest_framework.response.Response(
-            {"message": "Invalid credentials"},
+            serializer.errors,
             status=rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 

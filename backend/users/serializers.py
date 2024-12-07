@@ -1,4 +1,5 @@
 import django.conf
+import django.contrib.auth
 import django.core.signing
 import django.utils.timezone
 import rest_framework.serializers
@@ -27,6 +28,37 @@ class UserSerializer(rest_framework.serializers.ModelSerializer):
             **validated_data,
             verified_email=django.conf.settings.DEFAULT_VERIFED_EMAIL,
         )
+
+
+class LoginSerializer(rest_framework.serializers.Serializer):
+    username = rest_framework.serializers.CharField(required=True)
+    password = rest_framework.serializers.CharField(
+        required=True, write_only=True
+    )
+
+    def validate(self, data):
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username:
+            raise rest_framework.serializers.ValidationError(
+                {"username": ["This field is required."]}
+            )
+
+        if not password:
+            raise rest_framework.serializers.ValidationError(
+                {"password": ["This field is required."]}
+            )
+
+        user = django.contrib.auth.authenticate(
+            username=username, password=password
+        )
+        if user is None:
+            raise rest_framework.serializers.ValidationError(
+                {"non_field_errors": ["Invalid credentials"]}
+            )
+
+        return {"user": user}
 
 
 class EmailTokenSerializer(rest_framework.serializers.Serializer):
