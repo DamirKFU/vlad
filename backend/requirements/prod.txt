@@ -1,8 +1,8 @@
 django==4.2.16
 django-cors-headers==4.4.0
-PyJWT==2.9
 django-cleanup==8.1.0
 djangorestframework==3.15.2
 sorl-thumbnail==12.10.0
+django-debug-toolbar==4.3.0
 pillow==10.2.0
 python-dotenv==1.0.1
