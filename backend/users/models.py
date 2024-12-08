@@ -50,6 +50,13 @@ class User(django.contrib.auth.models.AbstractUser):
             "unique": "A user with that username already exists.",
         },
     )
+    password = django.db.models.CharField(
+        "password",
+        max_length=128,
+        validators=[
+            users.validators.PasswordValidator(),
+        ],
+    )
 
     email = django.db.models.EmailField(
         "email address",

@@ -6,6 +6,7 @@ import rest_framework.serializers
 import rest_framework.validators
 
 import users.models
+import users.validators
 
 
 class UserSerializer(rest_framework.serializers.ModelSerializer):
@@ -31,24 +32,21 @@ class UserSerializer(rest_framework.serializers.ModelSerializer):
 
 
 class LoginSerializer(rest_framework.serializers.Serializer):
-    username = rest_framework.serializers.CharField(required=True)
+    username = rest_framework.serializers.CharField(
+        required=True,
+        max_length=32,
+        min_length=5,
+    )
     password = rest_framework.serializers.CharField(
-        required=True, write_only=True
+        required=True,
+        write_only=True,
+        max_length=128,
+        min_length=8,
     )
 
     def validate(self, data):
         username = data.get("username")
         password = data.get("password")
-
-        if not username:
-            raise rest_framework.serializers.ValidationError(
-                {"username": ["This field is required."]}
-            )
-
-        if not password:
-            raise rest_framework.serializers.ValidationError(
-                {"password": ["This field is required."]}
-            )
 
         user = django.contrib.auth.authenticate(
             username=username, password=password

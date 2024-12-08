@@ -20,6 +20,11 @@ class CrateUserView(rest_framework.generics.CreateAPIView):
     serializer_class = users.serializers.UserSerializer
     permission_classes = [rest_framework.permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        responce = super().create(request, *args, **kwargs)
+        responce.data = {}
+        return responce
+
 
 class VerifedEmailTokenView(rest_framework.views.APIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]

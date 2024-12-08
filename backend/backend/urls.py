@@ -19,6 +19,12 @@ urlpatterns = [
 
 
 if settings.DEBUG:
+    urlpatterns += (
+        django.urls.path(
+            "__debug__/",
+            django.urls.include("debug_toolbar.urls"),
+        ),
+    )
     if settings.MEDIA_ROOT:
         urlpatterns += static(
             settings.MEDIA_URL,
