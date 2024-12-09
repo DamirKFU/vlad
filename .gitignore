@@ -161,3 +161,5 @@ cython_debug/
 
 # chache
 cache/
+/node_modules
+frontend/package-lock.json

@@ -1,3 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
+
+
+
+* {
+  font-family: 'Montserrat Alternates';
+}
+
+.header-text {
+  font-family: 'Montserrat Alternates';
+}
+
+.product-options input[type="radio"] {
+  display: none;
+}
+.product-options label {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+.product-options input[type="radio"]:checked + label {
+  border-color: rgb(212, 16, 16);
+}
+
 .color-circle {
   width: 30px;
   height: 30px;
@@ -7,14 +38,45 @@
 }
 .color-circle.selected {
   border-color: black;
-  background-image: url("https://static.tildacdn.com/tild6230-6263-4431-b732-306633643936/arrow_black_1.svg");
+  background-image: url('https://static.tildacdn.com/tild6230-6263-4431-b732-306633643936/arrow_black_1.svg');
   background-size: cover;
 }
+
 .menu-header {
-  border-bottom: 2px solid #d1d5db;
+  border-bottom: 2px solid #4d5055;
   color: #9ca3af;
+  font-family: 'Roboto', Arial, Helvetica, sans-serif;
 }
 .menu-header.active {
   border-bottom: 4px solid #4d5055;
   color: rgb(61, 54, 54);
+}
+
+.item-size {
+  font-family: 'Oswald';
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: border-bottom 0.4s ease, border-color 0.4s ease;
+}
+
+.item-size.selected {
+  border-bottom: 2px solid currentColor;
+}
+
+input:checked + span span {
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+input:not(:checked) + span span {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+input:not(:checked) + span {
+  border-color: gray;
+}
+
+input:checked + span {
+  border-color: black;
 }
