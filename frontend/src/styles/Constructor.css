@@ -1,0 +1,20 @@
+.color-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.color-circle.selected {
+  border-color: black;
+  background-image: url("https://static.tildacdn.com/tild6230-6263-4431-b732-306633643936/arrow_black_1.svg");
+  background-size: cover;
+}
+.menu-header {
+  border-bottom: 2px solid #d1d5db;
+  color: #9ca3af;
+}
+.menu-header.active {
+  border-bottom: 4px solid #4d5055;
+  color: rgb(61, 54, 54);
+}

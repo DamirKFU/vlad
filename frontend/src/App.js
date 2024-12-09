@@ -5,6 +5,7 @@ import Login from "./pages/Login"
 import Home from "./pages/Home"
 import Register from "./pages/Register"
 import Http404 from "./pages/Http404"
+import Constructor from "./pages/Constructor"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
 import api from "./api";
@@ -37,6 +38,7 @@ function App() {
           <Route path="/register" element={<RegisterAndLogout />}/>
           <Route path="/logout" element={<Logout />} />
           <Route path="*" element={<Http404 />}/>
+          <Route path="/constructor" element={<Constructor />}/>
         </Routes>
       </BrowserRouter>
   )
