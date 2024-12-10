@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
 import api from "./api";
 
+
 function Logout() {
   api.post("users/logout/")
   return <Navigate to="/login"/>
