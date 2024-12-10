@@ -95,7 +95,28 @@ class Color(AbstractModel):
         verbose_name_plural = "цвета"
 
 
+class ItemManager(django.db.models.Manager):
+    def all_items(self):
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related(
+                Item.category.field.name,
+                Item.color.field.name,
+            )
+        )
+        return queryset.values(
+            Item.size.field.name,
+            Item.count.field.name,
+            f"{Item.category.field.name}__{Category.name.field.name}",
+            f"{Item.color.field.name}__{Color.name.field.name}",
+            f"{Item.color.field.name}__{Color.color.field.name}",
+        )
+
+
 class Item(django.db.models.Model):
+    objects = ItemManager()
+
     category = django.db.models.ForeignKey(
         Category,
         on_delete=django.db.models.CASCADE,
