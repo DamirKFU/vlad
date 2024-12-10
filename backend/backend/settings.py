@@ -12,7 +12,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 DEFAULT_VERIFED_EMAIL = False
 

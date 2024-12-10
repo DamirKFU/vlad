@@ -8,8 +8,13 @@ app_name = "api"
 urlpatterns = [
     django.urls.path(
         "users/",
-        django.urls.include("users.urls"),
+        django.urls.include("users.urls", "users"),
         name="users",
+    ),
+    django.urls.path(
+        "catalog/",
+        django.urls.include("catalog.urls", "catalog"),
+        name="catalog",
     ),
     django.urls.path(
         "get-csrf-token/",

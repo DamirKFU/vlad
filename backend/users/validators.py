@@ -11,6 +11,7 @@ class UsernameValidator(django.core.validators.RegexValidator):
     flags = re.ASCII
 
 
+@django.utils.deconstruct.deconstructible
 class PasswordValidator:
     def __call__(self, password):
         if len(password) < 8 or len(password) > 128:

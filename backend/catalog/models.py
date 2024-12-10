@@ -5,6 +5,8 @@ import django.db.models
 import django.utils.safestring
 import sorl.thumbnail
 
+import catalog.validators
+
 
 def get_path_image(instance, filename):
     ext = Path(filename).suffix
@@ -79,12 +81,19 @@ class Category(AbstractModel):
 
 
 class Color(AbstractModel):
+    color = django.db.models.CharField(
+        max_length=7,
+        validators=[
+            catalog.validators.HexColorValidator,
+        ],
+    )
+
     class Meta:
         verbose_name = "цвет"
         verbose_name_plural = "цвета"
 
 
-class TShirt(django.db.models.Model):
+class Item(django.db.models.Model):
     category = django.db.models.ForeignKey(
         Category,
         on_delete=django.db.models.CASCADE,
@@ -108,28 +117,6 @@ class TShirt(django.db.models.Model):
         max_length=3,
     )
 
-    image = sorl.thumbnail.ImageField(
-        "изображение",
-        upload_to=get_path_image,
-        help_text="загрузите изображение",
-    )
-
-    def get_image_300x300(self):
-        return sorl.thumbnail.get_thumbnail(
-            self.image,
-            "300x300",
-            crop="center",
-            quality=100,
-        )
-
-    def image_tmb(self):
-        tag = f'<img src="{self.get_image_300x300().url}">'
-        return django.utils.safestring.mark_safe(tag)
-
-    image_tmb.short_description = "превью"
-    image_tmb.allow_tags = True
-    image_tmb.field_name = "image_tmb"
-
     count = django.db.models.PositiveIntegerField(
         "количество",
         help_text="укажите количество",
@@ -148,45 +135,3 @@ class TShirt(django.db.models.Model):
 
     def __str__(self) -> str:
         return f"Футблка({self.category}, {self.color}, {self.size})"
-
-
-class Embroidery(AbstractModel):
-    main_image = sorl.thumbnail.ImageField(
-        "главное изображение",
-        upload_to=get_path_image,
-        help_text="загрузите изображение",
-    )
-    secondary_image = sorl.thumbnail.ImageField(
-        "вторичное изображение",
-        upload_to=get_path_image,
-        help_text="загрузите изображение",
-    )
-
-    def get_main_image_300x300(self):
-        return sorl.thumbnail.get_thumbnail(
-            self.main_image,
-            "300x300",
-            crop="center",
-            quality=100,
-        )
-
-    def get_secondary_image_300x300(self):
-        return sorl.thumbnail.get_thumbnail(
-            self.secondary_image,
-            "300x300",
-            crop="center",
-            quality=100,
-        )
-
-    def image_tmb(self):
-        tag = f'<img src="{self.get_main_image_300x300().url}">'
-        tag += f'<img src="{self.get_secondary_image_300x300().url}">'
-        return django.utils.safestring.mark_safe(tag)
-
-    image_tmb.short_description = "превью"
-    image_tmb.allow_tags = True
-    image_tmb.field_name = "image_tmb"
-
-    class Meta:
-        verbose_name = "вышивка"
-        verbose_name_plural = "вышивки"
