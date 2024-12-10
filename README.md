@@ -83,6 +83,13 @@
         python manage.py migrate
         ```
 
+3. Load fixtures
+    * python
+
+    ```bash
+    python -Xutf8 manage.py loaddata fixtures/data.json
+    ```
+
 #### Static collection
 
 * python

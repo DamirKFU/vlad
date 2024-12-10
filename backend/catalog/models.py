@@ -82,10 +82,12 @@ class Category(AbstractModel):
 
 class Color(AbstractModel):
     color = django.db.models.CharField(
+        "hex цвета",
         max_length=7,
         validators=[
             catalog.validators.HexColorValidator,
         ],
+        help_text="напишите hex цвета иммет формат #008000",
     )
 
     class Meta:
@@ -124,8 +126,8 @@ class Item(django.db.models.Model):
     )
 
     class Meta:
-        verbose_name = "футболка"
-        verbose_name_plural = "футболки"
+        verbose_name = "товар"
+        verbose_name_plural = "товары"
 
         unique_together = (
             "category",

@@ -1,0 +1,55 @@
+[
+{
+  "model": "catalog.category",
+  "pk": 1,
+  "fields": {
+    "name": "Футболка"
+  }
+},
+{
+  "model": "catalog.color",
+  "pk": 1,
+  "fields": {
+    "name": "Красный",
+    "color": "#FF0000"
+  }
+},
+{
+  "model": "catalog.color",
+  "pk": 2,
+  "fields": {
+    "name": "Зеленный",
+    "color": "#008000"
+  }
+},
+{
+  "model": "catalog.item",
+  "pk": 1,
+  "fields": {
+    "category": 1,
+    "color": 1,
+    "size": "XS",
+    "count": 3
+  }
+},
+{
+  "model": "catalog.item",
+  "pk": 2,
+  "fields": {
+    "category": 1,
+    "color": 2,
+    "size": "XS",
+    "count": 2
+  }
+},
+{
+  "model": "catalog.item",
+  "pk": 3,
+  "fields": {
+    "category": 1,
+    "color": 1,
+    "size": "L",
+    "count": 7
+  }
+}
+]
