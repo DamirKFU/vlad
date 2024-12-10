@@ -6,3 +6,4 @@ sorl-thumbnail==12.10.0
 django-debug-toolbar==4.3.0
 pillow==10.2.0
 python-dotenv==1.0.1
+gunicorn==23.0.0
