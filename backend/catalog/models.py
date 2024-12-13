@@ -106,6 +106,7 @@ class ItemManager(django.db.models.Manager):
             )
         )
         return queryset.values(
+            Item.id.field.name,
             Item.size.field.name,
             Item.count.field.name,
             f"{Item.category.field.name}__{Category.name.field.name}",
