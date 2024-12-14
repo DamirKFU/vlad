@@ -1,5 +1,6 @@
 import collections
 
+import django.db
 import rest_framework.permissions
 import rest_framework.response
 import rest_framework.views
@@ -49,6 +50,7 @@ class ItemListView(rest_framework.views.APIView):
 class ConstructorProductCreateView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
+    @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
         serializer = catalog.serializers.ConstructorProductCreateSerializer(
             data=request.data,
