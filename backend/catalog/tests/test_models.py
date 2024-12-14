@@ -1,4 +1,3 @@
-# backend/catalog/tests/test_models.py
 import django.test
 import parameterized.parameterized
 
@@ -17,7 +16,7 @@ class CategoryModelTest(django.test.TestCase):
         [
             ("Тестовая категория 2", True),
             ("", False),
-            ("x" * 151, False),  # max_length=150
+            ("x" * 151, False),
         ]
     )
     def test_category_name_validation(self, value, expected):
@@ -52,7 +51,7 @@ class ColorModelTest(django.test.TestCase):
 
     @parameterized.parameterized.expand(
         [
-            ("Зеленый2", "#008000", True),  # Изменили имя на уникальное
+            ("Зеленый2", "#008000", True),
             ("", "#008000", False),
             ("x" * 151, "#008000", False),
             ("Тест1", "invalid_hex", False),
@@ -99,7 +98,7 @@ class ItemModelTest(django.test.TestCase):
             (catalog.models.Size.L, True),
             (catalog.models.Size.XL, True),
             ("INVALID", False),
-            ("XXLL", False),  # max_length=3
+            ("XXLL", False),
         ]
     )
     def test_item_size_validation(self, size, expected):
@@ -231,7 +230,7 @@ class ConstructorProductModelTest(django.test.TestCase):
             (catalog.models.ConstructorProductStatus.ACCEPTED, True),
             (catalog.models.ConstructorProductStatus.REJECTED, True),
             ("INVALID", False),
-            ("TOOLONG", False),  # max_length=2
+            ("TOOLONG", False),
         ]
     )
     def test_constructor_product_status_validation(self, status, expected):

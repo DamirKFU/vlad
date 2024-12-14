@@ -1,4 +1,3 @@
-# backend/catalog/tests/test_views.py
 import http
 import shutil
 import tempfile
@@ -113,7 +112,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         self.authorized_client = rest_framework.test.APIClient()
         self.authorized_client.force_authenticate(user=self.user)
 
-        # Создаем временное изображение для тестов
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             image = PIL.Image.new("RGB", (100, 100))
             image.save(f, "PNG")
@@ -165,7 +163,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             "В ответе отсутствует id созданного товара",
         )
 
-        # Проверяем, что количество товара уменьшилось
         self.item.refresh_from_db()
         self.assertEqual(
             self.item.count,
@@ -173,7 +170,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             "Количество товара не уменьшилось после создания",
         )
 
-        # Проверяем создание изображения
         constructor_product = catalog.models.ConstructorProduct.objects.get(
             id=response.data["id"],
         )
