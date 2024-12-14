@@ -5,6 +5,7 @@ import rest_framework.response
 import rest_framework.views
 
 import catalog.models
+import catalog.serializers
 
 
 class ItemListView(rest_framework.views.APIView):
@@ -43,3 +44,23 @@ class ItemListView(rest_framework.views.APIView):
             }
 
         return rest_framework.response.Response(result)
+
+
+class ConstructorProductCreateView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = catalog.serializers.ConstructorProductCreateSerializer(
+            data=request.data
+        )
+        if serializer.is_valid():
+            constructor_product = serializer.save()
+            return rest_framework.response.Response(
+                {"id": constructor_product.id},
+                status=rest_framework.status.HTTP_201_CREATED,
+            )
+
+        return rest_framework.response.Response(
+            serializer.errors,
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )

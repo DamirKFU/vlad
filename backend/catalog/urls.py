@@ -14,4 +14,9 @@ urlpatterns = [
         catalog.views.ItemListView.as_view(),
         name="items",
     ),
+    django.urls.path(
+        "constructor-product/create/",
+        catalog.views.ConstructorProductCreateView.as_view(),
+        name="constructor-product-create",
+    ),
 ]

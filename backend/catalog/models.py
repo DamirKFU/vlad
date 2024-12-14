@@ -6,6 +6,7 @@ import django.utils.safestring
 import sorl.thumbnail
 
 import catalog.validators
+import users.models
 
 
 def get_path_image(instance, filename):
@@ -20,6 +21,12 @@ class Size(django.db.models.TextChoices):
     L = "L", "L"
     XL = "XL", "XL"
     XXL = "XXL", "XXL"
+
+
+class ConstructorProductStatus(django.db.models.TextChoices):
+    IN_MODERATION = "IM", "На модерации"
+    ACCEPTED = "AC", "Принято"
+    REJECTED = "RJ", "Отказано"
 
 
 class BaseImage(django.db.models.Model):
@@ -159,3 +166,56 @@ class Item(django.db.models.Model):
 
     def __str__(self) -> str:
         return f"Футблка({self.category}, {self.color}, {self.size})"
+
+
+class ConstructorProduct(django.db.models.Model):
+    item = django.db.models.ForeignKey(
+        Item,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="одежда",
+        help_text="одежда товара",
+        related_name="construct_products",
+        related_query_name="construct_products",
+    )
+    status = django.db.models.CharField(
+        "статус модерации",
+        choices=ConstructorProductStatus.choices,
+        default=ConstructorProductStatus.IN_MODERATION,
+        help_text="выберите статус",
+        max_length=2,
+    )
+    user = django.db.models.ForeignKey(
+        users.models.User,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="пользователь",
+        help_text="пользователь, отправивший запрос",
+        related_name="construct_products",
+        related_query_name="construct_products",
+    )
+
+    class Meta:
+        verbose_name = "товар конструктора"
+        verbose_name_plural = "товары конструктора"
+
+    def __str__(self):
+        return "Товар Конструктора"
+
+    def delete(self, *args, **kwargs):
+        self.item.count += 1
+        self.item.save()
+        super(ConstructorProduct, self).delete(*args, **kwargs)
+
+
+class ConstructorProductImage(BaseImage):
+    product = django.db.models.OneToOneField(
+        ConstructorProduct,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="товар",
+        help_text="товар изображения",
+        related_name="image",
+        related_query_name="image",
+    )
+
+    class Meta:
+        verbose_name = "изображение"
+        verbose_name_plural = "изображения"

@@ -1,20 +1,28 @@
-from django.contrib import admin
+import django.contrib
+import sorl.thumbnail.admin
 
 import catalog.models
 
 
-@admin.register(catalog.models.Category)
-class CategoryAdmin(admin.ModelAdmin):
+class ConstructorProductImageInline(
+    sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
+):
+    fields = ["image"]
+    model = catalog.models.ConstructorProductImage
+
+
+@django.contrib.admin.register(catalog.models.Category)
+class CategoryAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Category.name.field.name,)
 
 
-@admin.register(catalog.models.Color)
-class ColorAdmin(admin.ModelAdmin):
+@django.contrib.admin.register(catalog.models.Color)
+class ColorAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Color.name.field.name,)
 
 
-@admin.register(catalog.models.Item)
-class TShirtAdmin(admin.ModelAdmin):
+@django.contrib.admin.register(catalog.models.Item)
+class TShirtAdmin(django.contrib.admin.ModelAdmin):
     list_display = (
         catalog.models.Item.id.field.name,
         catalog.models.Item.category.field.name,
@@ -23,3 +31,14 @@ class TShirtAdmin(admin.ModelAdmin):
         catalog.models.Item.count.field.name,
     )
     list_display_links = (catalog.models.Item.id.field.name,)
+
+
+@django.contrib.admin.register(catalog.models.ConstructorProduct)
+class ConstructorProductAdmin(django.contrib.admin.ModelAdmin):
+    list_display = (
+        catalog.models.ConstructorProduct.item.field.name,
+        catalog.models.ConstructorProduct.status.field.name,
+    )
+    readonly_fields = (catalog.models.ConstructorProduct.user.field.name,)
+    list_editable = (catalog.models.ConstructorProduct.status.field.name,)
+    inlines = [ConstructorProductImageInline]
