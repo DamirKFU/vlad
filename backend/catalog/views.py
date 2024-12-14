@@ -51,7 +51,8 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = catalog.serializers.ConstructorProductCreateSerializer(
-            data=request.data
+            data=request.data,
+            context={"request": request},
         )
         if serializer.is_valid():
             constructor_product = serializer.save()

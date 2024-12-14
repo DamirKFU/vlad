@@ -1,6 +1,7 @@
 from pathlib import Path
 import uuid
 
+import django.core.validators
 import django.db.models
 import django.utils.safestring
 import sorl.thumbnail
@@ -92,7 +93,7 @@ class Color(AbstractModel):
         "hex цвета",
         max_length=7,
         validators=[
-            catalog.validators.HexColorValidator,
+            catalog.validators.HexColorValidator(),
         ],
         help_text="напишите hex цвета иммет формат #008000",
     )
@@ -152,6 +153,9 @@ class Item(django.db.models.Model):
         "количество",
         help_text="укажите количество",
         default=0,
+        validators=[
+            django.core.validators.MinValueValidator(0),
+        ],
     )
 
     class Meta:

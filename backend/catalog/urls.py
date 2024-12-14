@@ -5,7 +5,7 @@ import django.urls
 import catalog.views
 
 
-app_name = "users"
+app_name = "catalog"
 
 
 urlpatterns = [
