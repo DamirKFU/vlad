@@ -223,3 +223,18 @@ class ConstructorProductImage(BaseImage):
     class Meta:
         verbose_name = "изображение"
         verbose_name_plural = "изображения"
+
+
+class ConstructorEmbroideryImage(BaseImage):
+    product = django.db.models.OneToOneField(
+        ConstructorProduct,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="товар",
+        help_text="товар изображения",
+        related_name="embroidery_image",
+        related_query_name="embroidery_image",
+    )
+
+    class Meta:
+        verbose_name = "изображение вышивки"
+        verbose_name_plural = "изображения вышивки"

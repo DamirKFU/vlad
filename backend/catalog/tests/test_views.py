@@ -79,7 +79,6 @@ class ItemListViewTest(django.test.TestCase):
         )
 
 
-@django.test.override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class ConstructorProductCreateViewTest(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -122,6 +121,18 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
                 )
             )
 
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            image = PIL.Image.new("RGB", (100, 100))
+            image.save(f, "PNG")
+            f.seek(0)
+            self.test_embroidery_image = (
+                django.core.files.uploadedfile.SimpleUploadedFile(
+                    name="embroidery.png",
+                    content=f.read(),
+                    content_type="image/png",
+                )
+            )
+
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
@@ -133,6 +144,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             {
                 "item_id": self.item.id,
                 "image": self.test_image,
+                "embroidery_image": self.test_embroidery_image,
             },
             format="multipart",
         )
@@ -149,6 +161,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             {
                 "item_id": self.item.id,
                 "image": self.test_image,
+                "embroidery_image": self.test_embroidery_image,
             },
             format="multipart",
         )
@@ -175,7 +188,11 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
         self.assertTrue(
             constructor_product.image.image,
-            "Изображение не было сохранено",
+            "Изображение продукта не было сохранено",
+        )
+        self.assertTrue(
+            constructor_product.embroidery_image.image,
+            "Изображение вышивки не было сохранено",
         )
 
     def test_create_with_zero_count(self):
@@ -184,6 +201,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             {
                 "item_id": self.item_without_stock.id,
                 "image": self.test_image,
+                "embroidery_image": self.test_embroidery_image,
             },
             format="multipart",
         )
@@ -199,6 +217,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             {
                 "item_id": 99999,
                 "image": self.test_image,
+                "embroidery_image": self.test_embroidery_image,
             },
             format="multipart",
         )
@@ -208,7 +227,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             "Несуществующий товар должен возвращать 404",
         )
 
-    def test_create_without_image(self):
+    def test_create_without_images(self):
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
@@ -219,5 +238,20 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         self.assertEqual(
             response.status_code,
             http.HTTPStatus.BAD_REQUEST,
-            "Создание без изображения должно возвращать ошибку",
+            "Создание без изображений должно возвращать ошибку",
+        )
+
+    def test_create_without_embroidery_image(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:constructor-product-create"),
+            {
+                "item_id": self.item.id,
+                "image": self.test_image,
+            },
+            format="multipart",
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Создание без изображения вышивки должно возвращать ошибку",
         )

@@ -11,6 +11,13 @@ class ConstructorProductImageInline(
     model = catalog.models.ConstructorProductImage
 
 
+class ConstructorEmbroideryImageInline(
+    sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
+):
+    fields = ["image"]
+    model = catalog.models.ConstructorEmbroideryImage
+
+
 @django.contrib.admin.register(catalog.models.Category)
 class CategoryAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Category.name.field.name,)
@@ -41,4 +48,7 @@ class ConstructorProductAdmin(django.contrib.admin.ModelAdmin):
     )
     readonly_fields = (catalog.models.ConstructorProduct.user.field.name,)
     list_editable = (catalog.models.ConstructorProduct.status.field.name,)
-    inlines = [ConstructorProductImageInline]
+    inlines = [
+        ConstructorProductImageInline,
+        ConstructorEmbroideryImageInline,
+    ]
