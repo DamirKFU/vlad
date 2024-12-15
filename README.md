@@ -75,7 +75,7 @@
         pip install -r requirements/test.txt
         ```
 
-2. Migrate db.sqllite3
+2. Migrate Database
     * python
 
         ```bash
@@ -86,9 +86,9 @@
 3. Load fixtures
     * python
 
-    ```bash
-    python -Xutf8 manage.py loaddata fixtures/data.json
-    ```
+        ```bash
+        python -Xutf8 manage.py loaddata fixtures/data.json
+        ```
 
 #### Static collection
 
@@ -103,14 +103,12 @@
 * production
 
     ```bash
-    сd lyceum
     python manage.py runserver
     ```
 
 * test
 
     ```bash
-    сd lyceum
     python manage.py test
     ```
 
