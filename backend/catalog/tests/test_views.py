@@ -243,6 +243,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
 
     def test_create_without_embroidery_image(self):
+        initial_count = self.item.count
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
@@ -253,6 +254,25 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
         self.assertEqual(
             response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Создание без изображения вышивки должно возвращать ошибку",
+            http.HTTPStatus.CREATED,
+            "Ошибка при создании товара без изображения вышивки",
+        )
+
+        self.item.refresh_from_db()
+        self.assertEqual(
+            self.item.count,
+            initial_count - 1,
+            "Количество товара не уменьшилось после создания",
+        )
+
+        constructor_product = catalog.models.ConstructorProduct.objects.get(
+            id=response.data["id"],
+        )
+        self.assertTrue(
+            constructor_product.image.image,
+            "Изображение продукта не было сохранено",
+        )
+        self.assertFalse(
+            hasattr(constructor_product, "embroidery_image"),
+            "Изображение вышивки не должно быть создано",
         )
