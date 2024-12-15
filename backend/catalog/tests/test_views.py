@@ -79,6 +79,7 @@ class ItemListViewTest(django.test.TestCase):
         )
 
 
+@django.test.override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class ConstructorProductCreateViewTest(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
