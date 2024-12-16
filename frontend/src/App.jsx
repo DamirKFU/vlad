@@ -6,6 +6,7 @@ import Home from "./pages/Home"
 import Register from "./pages/Register"
 import Http404 from "./pages/Http404"
 import Constructor from "./pages/Constructor"
+import ForgotPassword from "./pages/ForgotPassword"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
 import api from "./api";
@@ -35,10 +36,11 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/constructor" element={<ProtectedRoute><Constructor /></ProtectedRoute>}/>
+          <Route path="/constructor" element={<Constructor />}/>
           <Route path="/login" element={<Login />}/>
           <Route path="/register" element={<RegisterAndLogout />}/>
-          <Route path="/logout" element={<Logout />} />
+          <Route path="/logout" element={<Logout />} /> 
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="*" element={<Http404 />}/>
         </Routes>
       </BrowserRouter>

@@ -1,18 +1,18 @@
 import { useState } from "react";
-import "../styles/Home.css"
+import styles from "../styles/Home.module.css";
 
 function Home() {
     const [content, setContent] = useState("");
     const [title, setTitle] = useState("");
+
     return (
-        <div>
-            <div>
+        <div className={styles.container}>
+            <div className={styles.notesSection}>
                 <h2>Notes</h2>
             </div>
             <h2>Create a Note</h2>
             <form>
                 <label htmlFor="title">Title:</label>
-                <br />
                 <input
                     type="text"
                     id="title"
@@ -22,7 +22,6 @@ function Home() {
                     value={title}
                 />
                 <label htmlFor="content">Content:</label>
-                <br />
                 <textarea
                     id="content"
                     name="content"
@@ -30,8 +29,11 @@ function Home() {
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                 ></textarea>
-                <br />
-                <input type="submit" value="Submit"></input>
+                <input 
+                    type="submit" 
+                    value="Submit"
+                    className={styles.submitBtn}
+                />
             </form>
         </div>
     );
