@@ -19,7 +19,6 @@ api.interceptors.request.use(
         } else {
             config.headers['X-CSRFToken'] = csrf_token;
         }
-        config.headers['X-CSRFToken'] = csrf_token;
         return config;
     },
     (error) => {
