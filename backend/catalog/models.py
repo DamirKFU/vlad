@@ -42,7 +42,7 @@ class BaseImage(django.db.models.Model):
             self.image,
             "300x300",
             crop="center",
-            quality=0,
+            quality=100,
         )
 
     def image_tmb(self):

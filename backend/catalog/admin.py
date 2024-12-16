@@ -7,7 +7,8 @@ import catalog.models
 class ConstructorProductImageInline(
     sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
 ):
-    fields = ["image"]
+    fields = ["image", "image_tmb"]
+    readonly_fields = ["image_tmb"]
     model = catalog.models.ConstructorProductImage
 
 
@@ -52,3 +53,9 @@ class ConstructorProductAdmin(django.contrib.admin.ModelAdmin):
         ConstructorProductImageInline,
         ConstructorEmbroideryImageInline,
     ]
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.user = request.user
+
+        super().save_model(request, obj, form, change)
