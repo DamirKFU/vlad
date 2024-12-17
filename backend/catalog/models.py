@@ -204,11 +204,6 @@ class ConstructorProduct(django.db.models.Model):
     def __str__(self):
         return "Товар Конструктора"
 
-    def delete(self, *args, **kwargs):
-        self.item.count += 1
-        self.item.save()
-        super(ConstructorProduct, self).delete(*args, **kwargs)
-
 
 class ConstructorProductImage(BaseImage):
     product = django.db.models.OneToOneField(

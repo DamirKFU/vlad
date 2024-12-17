@@ -11,26 +11,15 @@ class ConstructorProductCreateSerializer(
     image = rest_framework.serializers.ImageField()
     embroidery_image = rest_framework.serializers.ImageField(required=False)
 
-    def validate_item_id(self, value):
-        item = django.shortcuts.get_object_or_404(
-            catalog.models.Item, id=value
-        )
-        if item.count <= 0:
-            raise rest_framework.serializers.ValidationError(
-                "Item count is zero or less."
-            )
-
-        return value
-
     def create(self, validated_data):
         item_id = validated_data.pop("item_id")
         image = validated_data.pop("image")
         embroidery_image = validated_data.pop("embroidery_image", None)
         user = self.context["request"].user
 
-        item = catalog.models.Item.objects.get(id=item_id)
-        item.count -= 1
-        item.save()
+        item = django.shortcuts.get_object_or_404(
+            catalog.models.Item, id=item_id
+        )
 
         constructor_product = catalog.models.ConstructorProduct.objects.create(
             item=item,

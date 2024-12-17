@@ -100,12 +100,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             size=catalog.models.Size.M,
             count=10,
         )
-        cls.item_without_stock = catalog.models.Item.objects.create(
-            category=cls.category,
-            color=cls.color,
-            size=catalog.models.Size.L,
-            count=0,
-        )
 
     def setUp(self):
         self.guest_client = rest_framework.test.APIClient()
@@ -156,7 +150,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
 
     def test_authorized_create(self):
-        initial_count = self.item.count
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
@@ -177,13 +170,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             "В ответе отсутствует id созданного товара",
         )
 
-        self.item.refresh_from_db()
-        self.assertEqual(
-            self.item.count,
-            initial_count - 1,
-            "Количество товара не уменьшилось после создания",
-        )
-
         constructor_product = catalog.models.ConstructorProduct.objects.get(
             id=response.data["id"],
         )
@@ -194,22 +180,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         self.assertTrue(
             constructor_product.embroidery_image.image,
             "Изображение вышивки не было сохранено",
-        )
-
-    def test_create_with_zero_count(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:constructor-product-create"),
-            {
-                "item_id": self.item_without_stock.id,
-                "image": self.test_image,
-                "embroidery_image": self.test_embroidery_image,
-            },
-            format="multipart",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Товар с нулевым количеством не должен создаваться",
         )
 
     def test_create_with_invalid_item_id(self):
@@ -243,7 +213,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
 
     def test_create_without_embroidery_image(self):
-        initial_count = self.item.count
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
@@ -256,13 +225,6 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             response.status_code,
             http.HTTPStatus.CREATED,
             "Ошибка при создании товара без изображения вышивки",
-        )
-
-        self.item.refresh_from_db()
-        self.assertEqual(
-            self.item.count,
-            initial_count - 1,
-            "Количество товара не уменьшилось после создания",
         )
 
         constructor_product = catalog.models.ConstructorProduct.objects.get(
