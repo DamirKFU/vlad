@@ -53,7 +53,7 @@ class LoginSerializer(rest_framework.serializers.Serializer):
         )
         if user is None:
             raise rest_framework.serializers.ValidationError(
-                {"non_field_errors": ["Invalid credentials"]}
+                {"non_field_errors": ["Пользователь не найден"]}
             )
 
         return {"user": user}

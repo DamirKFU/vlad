@@ -128,7 +128,7 @@ class AuthTestCase(django.test.TestCase):
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
                     "status": "error",
-                    "errors": {"non_field_errors": ["Invalid credentials"]},
+                    "errors": {"non_field_errors": ["Пользователь не найден"]},
                     "message": "Ошибка авторизации",
                 },
             ),
@@ -138,7 +138,7 @@ class AuthTestCase(django.test.TestCase):
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
                     "status": "error",
-                    "errors": {"non_field_errors": ["Invalid credentials"]},
+                    "errors": {"non_field_errors": ["Пользователь не найден"]},
                     "message": "Ошибка авторизации",
                 },
             ),
