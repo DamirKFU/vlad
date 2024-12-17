@@ -21,9 +21,25 @@ class CrateUserView(rest_framework.generics.CreateAPIView):
     permission_classes = [rest_framework.permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        responce = super().create(request, *args, **kwargs)
-        responce.data = {}
-        return responce
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            return rest_framework.response.Response(
+                {
+                    "status": "success",
+                    "message": "Регистрация успешно завершена",
+                },
+                status=rest_framework.status.HTTP_201_CREATED,
+            )
+
+        return rest_framework.response.Response(
+            {
+                "status": "error",
+                "errors": serializer.errors,
+                "message": "Ошибка при регистрации",
+            },
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class VerifedEmailTokenView(rest_framework.views.APIView):
@@ -91,12 +107,19 @@ class LoginView(rest_framework.generics.GenericAPIView):
             user = serializer.validated_data["user"]
             django.contrib.auth.login(request, user)
             return rest_framework.response.Response(
-                {"message": "Login successful"},
+                {
+                    "status": "success",
+                    "message": "Вход выполнен успешно",
+                },
                 status=rest_framework.status.HTTP_200_OK,
             )
 
         return rest_framework.response.Response(
-            serializer.errors,
+            {
+                "status": "error",
+                "errors": serializer.errors,
+                "message": "Ошибка авторизации",
+            },
             status=rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 

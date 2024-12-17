@@ -5,18 +5,22 @@ import django.core.validators
 
 
 @django.utils.deconstruct.deconstructible
-class UsernameValidator(django.core.validators.RegexValidator):
-    regex = r"^(?=.{5,32}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$"
-    message = (
-        "Имя пользователя должно соответствовать следующим правилам:\n"
-        "- Длина от 5 до 32 символов\n"
-        "- Может содержать только латинские "
-        "буквы, цифры, точку и нижнее подчеркивание\n"
-        "- Не может начинаться или заканчиваться точкой или подчеркиванием\n"
-        "- Не может содержать два символа точки или подчеркивания подряд\n"
-        "- Только ASCII символы разрешены"
-    )
-    flags = re.ASCII
+class UsernameValidator:
+    def __call__(self, username):
+        if len(username) < 5 or len(username) > 32:
+            raise django.core.exceptions.ValidationError(
+                "Имя пользователя должно быть от 5 до 32 символов.",
+                code="username_length",
+            )
+
+        if not re.match("^[a-zA-Z0-9_]+$", username):
+            raise django.core.exceptions.ValidationError(
+                (
+                    "Имя пользователя может содержать только латинские буквы, "
+                    "цифры и нижнее подчеркивание."
+                ),
+                code="username_invalid_chars",
+            )
 
 
 @django.utils.deconstruct.deconstructible
@@ -26,6 +30,15 @@ class PasswordValidator:
             raise django.core.exceptions.ValidationError(
                 "Пароль должен быть от 8 до 128 символов.",
                 code="password_length",
+            )
+
+        if not re.match("^[a-zA-Z0-9_]+$", password):
+            raise django.core.exceptions.ValidationError(
+                (
+                    "Пароль может содержать только латинские буквы, "
+                    "цифры и нижнее подчеркивание."
+                ),
+                code="password_invalid_chars",
             )
 
         if not re.findall("[A-Z]", password):
@@ -44,10 +57,4 @@ class PasswordValidator:
             raise django.core.exceptions.ValidationError(
                 "Пароль должен содержать хотя бы одну цифру.",
                 code="password_digit",
-            )
-
-        if " " in password:
-            raise django.core.exceptions.ValidationError(
-                "Пароль не должен содержать пробелы.",
-                code="password_no_spaces",
             )

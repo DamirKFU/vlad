@@ -47,7 +47,7 @@ class User(django.contrib.auth.models.AbstractUser):
             users.validators.UsernameValidator(),
         ],
         error_messages={
-            "unique": "A user with that username already exists.",
+            "unique": "Пользователь с таким именем уже существует.",
         },
     )
     password = django.db.models.CharField(
@@ -62,6 +62,9 @@ class User(django.contrib.auth.models.AbstractUser):
         "email address",
         unique=True,
         null=False,
+        error_messages={
+            "unique": "Пользователь с таким email уже существует.",
+        },
     )
 
     verified_email = django.db.models.BooleanField(
