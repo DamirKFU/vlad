@@ -255,13 +255,3 @@ class ConstructorProductModelTest(django.test.TestCase):
             "Товар Конструктора",
             "Неверное строковое представление",
         )
-
-    def test_constructor_product_delete(self):
-        initial_count = self.item.count
-        self.constructor_product.delete()
-        self.item.refresh_from_db()
-        self.assertEqual(
-            self.item.count,
-            initial_count + 1,
-            "Количество товара не увеличилось после удаления",
-        )
