@@ -24,6 +24,15 @@ class UserSerializer(rest_framework.serializers.ModelSerializer):
             },
         }
 
+    def validate_email(self, value):
+        normalized_email = users.models.UserManager.normalize_email(value)
+        if users.models.User.objects.filter(email=normalized_email).exists():
+            raise rest_framework.serializers.ValidationError(
+                "Пользователь с таким email уже существует."
+            )
+
+        return value
+
     def create(self, validated_data):
         return users.models.User.objects.create_user(
             **validated_data,
