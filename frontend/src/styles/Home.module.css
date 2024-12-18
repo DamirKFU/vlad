@@ -1,0 +1,112 @@
+.mainContainer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.pageTitle {
+    font-family: 'Montserrat Alternates', sans-serif;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.constructorButton {
+    display: block;
+    text-align: center;
+    padding: 15px;
+    margin: 20px auto;
+    background-color: #000;
+    color: #fff;
+    text-decoration: none;
+    max-width: 300px;
+}
+
+.orderForm {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.formGroup {
+    margin-bottom: 20px;
+}
+
+.input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+.messengerGroup,
+.customizationGroup {
+    margin: 20px 0;
+}
+
+.messengerButtons,
+.customizationButtons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.submitButton {
+    width: 100%;
+    padding: 15px;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+.catalogPage {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+    background-image: url('https://static.tildacdn.com/tild6666-3362-4864-b366-303464353862/noroot.png');
+    background-size: cover;
+    background-position: center;
+}
+
+.heroSection {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+    padding: 0 20px;
+}
+
+.catalogTitle {
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 120px;
+    color: white;
+    letter-spacing: 10px;
+    margin-bottom: 40px;
+}
+
+.constructorLink {
+    display: inline-block;
+    background-color: white;
+    color: black;
+    padding: 20px 40px;
+    text-decoration: none;
+    font-family: 'Montserrat Alternates', sans-serif;
+    font-size: 18px;
+    transition: all 0.3s ease;
+}
+
+.constructorLink:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .catalogTitle {
+        font-size: 60px;
+    }
+    
+    .constructorLink {
+        padding: 15px 30px;
+        font-size: 16px;
+    }
+}
