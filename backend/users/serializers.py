@@ -84,3 +84,36 @@ class EmailTokenSerializer(rest_framework.serializers.Serializer):
             )
 
         return data
+
+
+class PasswordResetRequestSerializer(rest_framework.serializers.Serializer):
+    email = rest_framework.serializers.EmailField()
+
+    def validate_email(self, value):
+        normalized_email = users.models.UserManager.normalize_email(value)
+        try:
+            users.models.User.objects.get(email=normalized_email)
+        except users.models.User.DoesNotExist:
+            raise rest_framework.serializers.ValidationError(
+                "Пользователь с таким email не найден."
+            )
+
+        return normalized_email
+
+
+class PasswordResetConfirmSerializer(rest_framework.serializers.Serializer):
+    token = rest_framework.serializers.CharField()
+    password = rest_framework.serializers.CharField(
+        validators=[users.validators.PasswordValidator()]
+    )
+
+    def validate_token(self, value):
+        try:
+            return django.core.signing.loads(value, max_age=3600)
+        except (
+            django.core.signing.BadSignature,
+            django.core.signing.SignatureExpired,
+        ):
+            raise rest_framework.serializers.ValidationError(
+                "Недействительная или просроченная ссылка для сброса пароля."
+            )

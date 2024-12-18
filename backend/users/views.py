@@ -143,3 +143,85 @@ class IsAuthView(rest_framework.views.APIView):
             {"message": "You auth"},
             status=rest_framework.status.HTTP_200_OK,
         )
+
+
+class PasswordResetRequestView(rest_framework.generics.GenericAPIView):
+    serializer_class = users.serializers.PasswordResetRequestSerializer
+    permission_classes = (rest_framework.permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            user = users.models.User.objects.get(email=email)
+
+            token_data = {"user_id": user.id, "email": user.email}
+            token = django.core.signing.dumps(token_data)
+
+            reset_url = f"http://localhost:3000/reset-password/{token}"
+
+            django.core.mail.send_mail(
+                subject="Сброс пароля",
+                message="",
+                html_message=django.template.loader.render_to_string(
+                    "reset_password_email.html",
+                    {"reset_url": reset_url, "user": user},
+                ),
+                from_email=django.conf.settings.EMAIL_ADMIN,
+                recipient_list=[email],
+            )
+
+            return rest_framework.response.Response(
+                {
+                    "status": "success",
+                    "message": (
+                        "Инструкции по сбросу пароля отправлены"
+                        " на вашу почту."
+                    ),
+                },
+                status=rest_framework.status.HTTP_200_OK,
+            )
+
+        return rest_framework.response.Response(
+            {
+                "status": "error",
+                "errors": serializer.errors,
+                "message": "Ошибка при запросе сброса пароля",
+            },
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class PasswordResetConfirmView(rest_framework.generics.GenericAPIView):
+    serializer_class = users.serializers.PasswordResetConfirmSerializer
+    permission_classes = (rest_framework.permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            token_data = serializer.validated_data["token"]
+            user = django.shortcuts.get_object_or_404(
+                users.models.User,
+                id=token_data["user_id"],
+                email=token_data["email"],
+            )
+
+            user.set_password(serializer.validated_data["password"])
+            user.save()
+
+            return rest_framework.response.Response(
+                {
+                    "status": "success",
+                    "message": "Пароль успешно изменен.",
+                },
+                status=rest_framework.status.HTTP_200_OK,
+            )
+
+        return rest_framework.response.Response(
+            {
+                "status": "error",
+                "errors": serializer.errors,
+                "message": "Ошибка при сбросе пароля",
+            },
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )

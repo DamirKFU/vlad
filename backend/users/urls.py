@@ -40,4 +40,14 @@ urlpatterns = [
         users.views.CheckEmailTokenView.as_view(),
         name="check_email_token",
     ),
+    django.urls.path(
+        "password/reset/",
+        users.views.PasswordResetRequestView.as_view(),
+        name="password_reset_request",
+    ),
+    django.urls.path(
+        "password/reset/confirm/",
+        users.views.PasswordResetConfirmView.as_view(),
+        name="password_reset_confirm",
+    ),
 ]

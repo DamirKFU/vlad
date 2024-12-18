@@ -243,3 +243,82 @@ class AuthTestCaseAdditional(django.test.TestCase):
                 "message": "Ошибка при регистрации",
             },
         )
+
+
+@django.test.override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+)
+class PasswordResetTestCase(django.test.TestCase):
+    def setUp(self):
+        self.user = users.models.User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="OldPass123",
+        )
+
+        self.reset_request_url = django.urls.reverse(
+            "api:users:password_reset_request"
+        )
+        self.reset_confirm_url = django.urls.reverse(
+            "api:users:password_reset_confirm"
+        )
+
+    def tearDown(self):
+        django.core.mail.outbox = []
+        self.user.delete()
+
+    def test_password_reset_request_valid_email(self):
+        response = self.client.post(
+            self.reset_request_url, {"email": "test@example.com"}
+        )
+
+        self.assertEqual(
+            response.status_code, rest_framework.status.HTTP_200_OK
+        )
+        self.assertEqual(len(django.core.mail.outbox), 1)
+        self.assertEqual(django.core.mail.outbox[0].subject, "Сброс пароля")
+        self.assertEqual(django.core.mail.outbox[0].to, ["test@example.com"])
+
+    def test_password_reset_request_invalid_email(self):
+        response = self.client.post(
+            self.reset_request_url, {"email": "nonexistent@example.com"}
+        )
+
+        self.assertEqual(
+            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST
+        )
+        self.assertEqual(len(django.core.mail.outbox), 0)
+
+    def test_password_reset_confirm_valid_token(self):
+        self.client.post(self.reset_request_url, {"email": "test@example.com"})
+
+        email_content = django.core.mail.outbox[0].alternatives[0][0]
+        token_start = email_content.find("/reset-password/") + len(
+            "/reset-password/"
+        )
+        token_end = email_content.find('"', token_start)
+        token = email_content[token_start:token_end]
+        new_password = "NewPass123"
+        response = self.client.post(
+            self.reset_confirm_url, {"token": token, "password": new_password}
+        )
+
+        self.assertEqual(
+            response.status_code, rest_framework.status.HTTP_200_OK
+        )
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(new_password))
+
+    def test_password_reset_confirm_invalid_token(self):
+        response = self.client.post(
+            self.reset_confirm_url,
+            {"token": "invalid-token", "password": "NewPass123"},
+        )
+
+        self.assertEqual(
+            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST
+        )
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("OldPass123"))
