@@ -79,9 +79,9 @@ const Catalog = () => {
         {products.map(product => (
           <div key={product.id} className="product-card">
             <div className="product-image">
-              {product.image?.image ? (
+              {product.image ? (
                 <img 
-                  src={product.image.image} 
+                  src={product.image} 
                   alt={product.name}
                   onError={(e) => {
                     e.target.onerror = null; // Предотвращаем бесконечную рекурсию
