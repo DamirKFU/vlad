@@ -10,9 +10,9 @@ app_name = "catalog"
 
 urlpatterns = [
     django.urls.path(
-        "items/",
-        catalog.views.ItemListView.as_view(),
-        name="items",
+        "garments/",
+        catalog.views.GarmentListView.as_view(),
+        name="garments",
     ),
     django.urls.path(
         "constructor-product/create/",

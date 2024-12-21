@@ -24,7 +24,7 @@ class ItemListViewTest(django.test.TestCase):
             name="Зеленый",
             color="#008000",
         )
-        cls.item = catalog.models.Item.objects.create(
+        cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
@@ -36,7 +36,7 @@ class ItemListViewTest(django.test.TestCase):
 
     def test_items_list_structure(self):
         response = self.guest_client.get(
-            django.urls.reverse("api:catalog:items"),
+            django.urls.reverse("api:catalog:garments"),
         )
         self.assertEqual(
             response.status_code,
@@ -51,30 +51,32 @@ class ItemListViewTest(django.test.TestCase):
             "Категория отсутствует в ответе",
         )
         self.assertIn(
-            self.item.size,
+            self.garment.size,
             data[self.category.name],
             "Размер отсутствует в ответе",
         )
         self.assertIn(
             self.color.name,
-            data[self.category.name][self.item.size],
+            data[self.category.name][self.garment.size],
             "Цвет отсутствует в ответе",
         )
 
-        item_data = data[self.category.name][self.item.size][self.color.name]
+        garment_data = data[self.category.name][self.garment.size][
+            self.color.name
+        ]
         self.assertEqual(
-            item_data["count"],
-            self.item.count,
+            garment_data["count"],
+            self.garment.count,
             "Неверное количество товара",
         )
         self.assertEqual(
-            item_data["hex"],
+            garment_data["hex"],
             self.color.color,
             "Неверный hex цвета",
         )
         self.assertEqual(
-            item_data["id"],
-            self.item.id,
+            garment_data["id"],
+            self.garment.id,
             "Неверный id товара",
         )
 
@@ -94,7 +96,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
             name="Зеленый",
             color="#008000",
         )
-        cls.item = catalog.models.Item.objects.create(
+        cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
@@ -137,7 +139,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         response = self.guest_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
-                "item_id": self.item.id,
+                "garment_id": self.garment.id,
                 "image": self.test_image,
                 "embroidery_image": self.test_embroidery_image,
             },
@@ -153,7 +155,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
-                "item_id": self.item.id,
+                "garment_id": self.garment.id,
                 "image": self.test_image,
                 "embroidery_image": self.test_embroidery_image,
             },
@@ -186,7 +188,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
-                "item_id": 99999,
+                "garment_id": 99999,
                 "image": self.test_image,
                 "embroidery_image": self.test_embroidery_image,
             },
@@ -202,7 +204,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
-                "item_id": self.item.id,
+                "garment_id": self.garment.id,
             },
             format="multipart",
         )
@@ -216,7 +218,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:constructor-product-create"),
             {
-                "item_id": self.item.id,
+                "garment_id": self.garment.id,
                 "image": self.test_image,
             },
             format="multipart",

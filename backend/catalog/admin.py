@@ -29,22 +29,22 @@ class ColorAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Color.name.field.name,)
 
 
-@django.contrib.admin.register(catalog.models.Item)
+@django.contrib.admin.register(catalog.models.Garment)
 class TShirtAdmin(django.contrib.admin.ModelAdmin):
     list_display = (
-        catalog.models.Item.id.field.name,
-        catalog.models.Item.category.field.name,
-        catalog.models.Item.color.field.name,
-        catalog.models.Item.size.field.name,
-        catalog.models.Item.count.field.name,
+        catalog.models.Garment.id.field.name,
+        catalog.models.Garment.category.field.name,
+        catalog.models.Garment.color.field.name,
+        catalog.models.Garment.size.field.name,
+        catalog.models.Garment.count.field.name,
     )
-    list_display_links = (catalog.models.Item.id.field.name,)
+    list_display_links = (catalog.models.Garment.id.field.name,)
 
 
 @django.contrib.admin.register(catalog.models.ConstructorProduct)
 class ConstructorProductAdmin(django.contrib.admin.ModelAdmin):
     list_display = (
-        catalog.models.ConstructorProduct.item.field.name,
+        catalog.models.ConstructorProduct.garment.field.name,
         catalog.models.ConstructorProduct.status.field.name,
     )
     readonly_fields = (catalog.models.ConstructorProduct.user.field.name,)

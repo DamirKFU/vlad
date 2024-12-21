@@ -7,22 +7,22 @@ import catalog.models
 class ConstructorProductCreateSerializer(
     rest_framework.serializers.Serializer
 ):
-    item_id = rest_framework.serializers.IntegerField()
+    garment_id = rest_framework.serializers.IntegerField()
     image = rest_framework.serializers.ImageField()
     embroidery_image = rest_framework.serializers.ImageField(required=False)
 
     def create(self, validated_data):
-        item_id = validated_data.pop("item_id")
+        garment_id = validated_data.pop("garment_id")
         image = validated_data.pop("image")
         embroidery_image = validated_data.pop("embroidery_image", None)
         user = self.context["request"].user
 
-        item = django.shortcuts.get_object_or_404(
-            catalog.models.Item, id=item_id
+        garment = django.shortcuts.get_object_or_404(
+            catalog.models.Garment, id=garment_id
         )
 
         constructor_product = catalog.models.ConstructorProduct.objects.create(
-            item=item,
+            garment=garment,
             user=user,
         )
 

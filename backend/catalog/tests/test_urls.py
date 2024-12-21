@@ -19,7 +19,7 @@ class StaticURLTests(django.test.TestCase):
 
     def test_urls_exists_at_desired_location(self):
         urls = [
-            django.urls.reverse("api:catalog:items"),
+            django.urls.reverse("api:catalog:garments"),
         ]
         for url in urls:
             with self.subTest(url=url):

@@ -9,39 +9,39 @@ import catalog.models
 import catalog.serializers
 
 
-class ItemListView(rest_framework.views.APIView):
+class GarmentListView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
 
     def get(self, request, *args, **kwargs):
-        items = catalog.models.Item.objects.all_items()
+        garments = catalog.models.Garment.objects.all_items()
         result = collections.defaultdict(lambda: collections.defaultdict(dict))
         category_name_key = (
-            f"{catalog.models.Item.category.field.name}"
+            f"{catalog.models.Garment.category.field.name}"
             f"__{catalog.models.Category.name.field.name}"
         )
-        size_key = catalog.models.Item.size.field.name
-        count_key = catalog.models.Item.count.field.name
-        item_id_key = catalog.models.Item.id.field.name
+        size_key = catalog.models.Garment.size.field.name
+        count_key = catalog.models.Garment.count.field.name
+        garment_id_key = catalog.models.Garment.id.field.name
         color_name_key = (
-            f"{catalog.models.Item.color.field.name}"
+            f"{catalog.models.Garment.color.field.name}"
             f"__{catalog.models.Color.name.field.name}"
         )
         color_color_key = (
-            f"{catalog.models.Item.color.field.name}"
+            f"{catalog.models.Garment.color.field.name}"
             f"__{catalog.models.Color.color.field.name}"
         )
-        for item in items:
-            category_name = item[category_name_key]
-            size = item[size_key]
-            color_name = item[color_name_key]
-            count = item[count_key]
-            hex_color = item[color_color_key]
-            item_id = item[item_id_key]
+        for garment in garments:
+            category_name = garment[category_name_key]
+            size = garment[size_key]
+            color_name = garment[color_name_key]
+            count = garment[count_key]
+            hex_color = garment[color_color_key]
+            garment_id = garment[garment_id_key]
 
             result[category_name][size][color_name] = {
                 "count": count,
                 "hex": hex_color,
-                "id": item_id,
+                "id": garment_id,
             }
 
         return rest_framework.response.Response(result)

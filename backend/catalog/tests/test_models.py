@@ -84,7 +84,7 @@ class ItemModelTest(django.test.TestCase):
         cls.color = catalog.models.Color.objects.create(
             name="Зеленый", color="#008000"
         )
-        cls.item = catalog.models.Item.objects.create(
+        cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
@@ -108,7 +108,7 @@ class ItemModelTest(django.test.TestCase):
         color = catalog.models.Color.objects.create(
             name="Красный", color="#FF0000"
         )
-        item = catalog.models.Item(
+        garment = catalog.models.Garment(
             category=category,
             color=color,
             size=size,
@@ -116,7 +116,7 @@ class ItemModelTest(django.test.TestCase):
         )
         if expected:
             try:
-                item.full_clean()
+                garment.full_clean()
             except django.core.exceptions.ValidationError:
                 self.fail("Валидный размер не проходит валидацию")
         else:
@@ -124,7 +124,7 @@ class ItemModelTest(django.test.TestCase):
                 django.core.exceptions.ValidationError,
                 msg="Невалидный размер проходит валидацию",
             ):
-                item.full_clean()
+                garment.full_clean()
 
     @parameterized.parameterized.expand(
         [
@@ -140,7 +140,7 @@ class ItemModelTest(django.test.TestCase):
         color = catalog.models.Color.objects.create(
             name="Красный", color="#FF0000"
         )
-        item = catalog.models.Item(
+        garment = catalog.models.Garment(
             category=category,
             color=color,
             size=catalog.models.Size.M,
@@ -148,7 +148,7 @@ class ItemModelTest(django.test.TestCase):
         )
         if expected:
             try:
-                item.full_clean()
+                garment.full_clean()
             except django.core.exceptions.ValidationError:
                 self.fail("Валидное количество не проходит валидацию")
         else:
@@ -156,12 +156,14 @@ class ItemModelTest(django.test.TestCase):
                 django.core.exceptions.ValidationError,
                 msg="Невалидное количество проходит валидацию",
             ):
-                item.full_clean()
+                garment.full_clean()
 
     def test_item_str(self):
-        expected = f"Футблка({self.category}, {self.color}, {self.item.size})"
+        expected = (
+            f"Футблка({self.category}, {self.color}, {self.garment.size})"
+        )
         self.assertEqual(
-            str(self.item),
+            str(self.garment),
             expected,
             "Неверное строковое представление товара",
         )
@@ -171,21 +173,21 @@ class ItemModelTest(django.test.TestCase):
             django.core.exceptions.ValidationError,
             msg="Валидация пропускает дубликат товара",
         ):
-            duplicate_item = catalog.models.Item(
+            duplicate_garment = catalog.models.Garment(
                 category=self.category,
                 color=self.color,
                 size=catalog.models.Size.M,
                 count=5,
             )
-            duplicate_item.full_clean()
+            duplicate_garment.full_clean()
 
     def test_item_manager(self):
-        items = catalog.models.Item.objects.all_items()
+        garments = catalog.models.Garment.objects.all_items()
         self.assertTrue(
-            len(items) > 0,
+            len(garments) > 0,
             "Менеджер не возвращает товары",
         )
-        item = items[0]
+        garment = garments[0]
         required_fields = {
             "id",
             "size",
@@ -195,7 +197,7 @@ class ItemModelTest(django.test.TestCase):
             "color__color",
         }
         self.assertEqual(
-            set(item.keys()),
+            set(garment.keys()),
             required_fields,
             "Менеджер возвращает неверный набор полей",
         )
@@ -210,7 +212,7 @@ class ConstructorProductModelTest(django.test.TestCase):
         cls.color = catalog.models.Color.objects.create(
             name="Зеленый", color="#008000"
         )
-        cls.item = catalog.models.Item.objects.create(
+        cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
@@ -219,7 +221,7 @@ class ConstructorProductModelTest(django.test.TestCase):
         cls.user = users.models.User.objects.create_user(username="testuser")
         cls.constructor_product = (
             catalog.models.ConstructorProduct.objects.create(
-                item=cls.item,
+                garment=cls.garment,
                 user=cls.user,
             )
         )
@@ -235,7 +237,7 @@ class ConstructorProductModelTest(django.test.TestCase):
     )
     def test_constructor_product_status_validation(self, status, expected):
         product = catalog.models.ConstructorProduct(
-            item=self.item, user=self.user, status=status
+            garment=self.garment, user=self.user, status=status
         )
         if expected:
             try:

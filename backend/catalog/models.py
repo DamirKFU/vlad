@@ -103,28 +103,28 @@ class Color(AbstractModel):
         verbose_name_plural = "цвета"
 
 
-class ItemManager(django.db.models.Manager):
+class GarmentManager(django.db.models.Manager):
     def all_items(self):
         queryset = (
             super()
             .get_queryset()
             .select_related(
-                Item.category.field.name,
-                Item.color.field.name,
+                Garment.category.field.name,
+                Garment.color.field.name,
             )
         )
         return queryset.values(
-            Item.id.field.name,
-            Item.size.field.name,
-            Item.count.field.name,
-            f"{Item.category.field.name}__{Category.name.field.name}",
-            f"{Item.color.field.name}__{Color.name.field.name}",
-            f"{Item.color.field.name}__{Color.color.field.name}",
+            Garment.id.field.name,
+            Garment.size.field.name,
+            Garment.count.field.name,
+            f"{Garment.category.field.name}__{Category.name.field.name}",
+            f"{Garment.color.field.name}__{Color.name.field.name}",
+            f"{Garment.color.field.name}__{Color.color.field.name}",
         )
 
 
-class Item(django.db.models.Model):
-    objects = ItemManager()
+class Garment(django.db.models.Model):
+    objects = GarmentManager()
 
     category = django.db.models.ForeignKey(
         Category,
@@ -159,8 +159,8 @@ class Item(django.db.models.Model):
     )
 
     class Meta:
-        verbose_name = "товар"
-        verbose_name_plural = "товары"
+        verbose_name = "одежда"
+        verbose_name_plural = "одежды"
 
         unique_together = (
             "category",
@@ -173,8 +173,8 @@ class Item(django.db.models.Model):
 
 
 class ConstructorProduct(django.db.models.Model):
-    item = django.db.models.ForeignKey(
-        Item,
+    garment = django.db.models.ForeignKey(
+        Garment,
         on_delete=django.db.models.CASCADE,
         verbose_name="одежда",
         help_text="одежда товара",
