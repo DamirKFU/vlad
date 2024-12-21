@@ -216,8 +216,8 @@ class ConstructorProductImage(BaseImage):
     )
 
     class Meta:
-        verbose_name = "изображение"
-        verbose_name_plural = "изображения"
+        verbose_name = "изображение товара конструктора"
+        verbose_name_plural = "изображения товаров конструктора"
 
 
 class ConstructorEmbroideryImage(BaseImage):
@@ -233,3 +233,75 @@ class ConstructorEmbroideryImage(BaseImage):
     class Meta:
         verbose_name = "изображение вышивки"
         verbose_name_plural = "изображения вышивки"
+
+
+class ProductManager(django.db.models.Manager):
+    def all_items(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("category")
+            .prefetch_related("image")
+            .only(
+                "id",
+                "name",
+                "price",
+                "category__name",
+            )
+        )
+
+
+class Product(AbstractModel):
+    objects = ProductManager()
+
+    price = django.db.models.PositiveIntegerField(
+        "цена",
+        help_text="цена товара",
+        default=0,
+    )
+    category = django.db.models.ForeignKey(
+        Category,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="категория",
+        help_text="атегория товара",
+        related_name="products",
+        related_query_name="products",
+    )
+
+    class Meta:
+        verbose_name = "товар"
+        verbose_name_plural = "товары"
+
+    def __str__(self):
+        return f"Товар({self.name})"
+
+
+class ProductImage(BaseImage):
+    product = django.db.models.OneToOneField(
+        Product,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="товар",
+        help_text="товар изображения",
+        related_name="image",
+        related_query_name="image",
+    )
+
+    def image_tmb(self):
+        if self.image:
+            tag = f'<img src="{self.get_image_660x880().url}">'
+            return django.utils.safestring.mark_safe(tag)
+
+        return "изображение отсутствует"
+
+    def get_image_660x880(self):
+        return sorl.thumbnail.get_thumbnail(
+            self.image,
+            "660x880",
+            upscale=False,
+            crop=False,
+            quality=100,
+        )
+
+    class Meta:
+        verbose_name = "изображение товара"
+        verbose_name_plural = "изображения товаров"

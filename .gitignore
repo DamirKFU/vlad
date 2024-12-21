@@ -163,3 +163,8 @@ cython_debug/
 cache/
 /node_modules
 frontend/package-lock.json
+
+# Media files
+media/
+*/media/
+backend/media/

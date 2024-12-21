@@ -1,6 +1,7 @@
 import collections
 
 import django.db
+import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
 import rest_framework.views
@@ -67,3 +68,9 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
             serializer.errors,
             status=rest_framework.status.HTTP_400_BAD_REQUEST,
         )
+
+
+class ProductListView(rest_framework.generics.ListAPIView):
+    permission_classes = (rest_framework.permissions.AllowAny,)
+    serializer_class = catalog.serializers.ProductSerializer
+    queryset = catalog.models.Product.objects.all_items()

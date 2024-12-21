@@ -36,3 +36,39 @@ class ConstructorProductCreateSerializer(
             )
 
         return constructor_product
+
+
+class ProductImageSerializer(rest_framework.serializers.ModelSerializer):
+    image = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = catalog.models.ProductImage
+        fields = ["image"]
+
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get("request")
+            return request.build_absolute_uri(obj.get_image_660x880().url)
+
+        return None
+
+
+class CategorySerializer(rest_framework.serializers.ModelSerializer):
+    class Meta:
+        model = catalog.models.Category
+        fields = ["name"]
+
+
+class ProductSerializer(rest_framework.serializers.ModelSerializer):
+    image = ProductImageSerializer()
+    category = CategorySerializer()
+
+    class Meta:
+        model = catalog.models.Product
+        fields = [
+            "id",
+            "name",
+            "price",
+            "category",
+            "image",
+        ]

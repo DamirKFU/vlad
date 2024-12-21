@@ -19,6 +19,15 @@ class ConstructorEmbroideryImageInline(
     model = catalog.models.ConstructorEmbroideryImage
 
 
+class ProductImageInline(
+    sorl.thumbnail.admin.AdminImageMixin,
+    django.contrib.admin.TabularInline,
+):
+    fields = ["image", "image_tmb"]
+    readonly_fields = ["image_tmb"]
+    model = catalog.models.ProductImage
+
+
 @django.contrib.admin.register(catalog.models.Category)
 class CategoryAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Category.name.field.name,)
@@ -59,3 +68,14 @@ class ConstructorProductAdmin(django.contrib.admin.ModelAdmin):
             obj.user = request.user
 
         super().save_model(request, obj, form, change)
+
+
+@django.contrib.admin.register(catalog.models.Product)
+class ProductAdmin(django.contrib.admin.ModelAdmin):
+    list_display = (
+        catalog.models.Product.name.field.name,
+        catalog.models.Product.price.field.name,
+        catalog.models.Product.category.field.name,
+    )
+    list_display_links = (catalog.models.Product.name.field.name,)
+    inlines = (ProductImageInline,)
