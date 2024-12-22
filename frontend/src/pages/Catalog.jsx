@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import '../styles/Catalog.css';
 
@@ -97,9 +98,9 @@ const Catalog = () => {
             <div className="product-info">
               <h3 className="product-title">{product.name}</h3>
               <p className="product-price">{product.price} руб</p>
-              <button className="add-to-cart-btn">
+              <Link to={`/product/${product.id}`} className="add-to-cart-btn">
                 Подробнее
-              </button>
+              </Link>
             </div>
           </div>
         ))}

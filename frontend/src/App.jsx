@@ -7,6 +7,7 @@ import Register from "./pages/Register"
 import Http404 from "./pages/Http404"
 import Constructor from "./pages/Constructor"
 import ForgotPassword from "./pages/ForgotPassword"
+import ProductDetail from "./pages/ProductDetail"
 import Catalog from "./pages/Catalog"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
@@ -44,6 +45,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="*" element={<Http404 />}/>
           <Route path="/catalog" element={<Catalog />}/>
+          <Route path="/product/:productId" element={<ProductDetail />}/>
         </Routes>
       </BrowserRouter>
   )

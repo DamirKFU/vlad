@@ -1,6 +1,7 @@
 import collections
 
 import django.db
+import django.shortcuts
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
@@ -74,3 +75,52 @@ class ProductListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     serializer_class = catalog.serializers.ProductSerializer
     queryset = catalog.models.Product.objects.all_items()
+
+
+class ProductDetailView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.AllowAny,)
+
+    def get(self, request, product_id, *args, **kwargs):
+        product = django.shortcuts.get_object_or_404(
+            catalog.models.Product.objects.detail_view(), id=product_id
+        )
+        related_garments = catalog.models.Garment.objects.items_by_category(
+            product.category
+        )
+
+        result = {
+            "id": product.id,
+            "name": product.name,
+            "image": request.build_absolute_uri(product.image.image.url),
+            "price": product.price,
+            "garments": collections.defaultdict(
+                lambda: collections.defaultdict(dict)
+            ),
+        }
+
+        size_key = catalog.models.Garment.size.field.name
+        count_key = catalog.models.Garment.count.field.name
+        garment_id_key = catalog.models.Garment.id.field.name
+        color_name_key = (
+            f"{catalog.models.Garment.color.field.name}"
+            f"__{catalog.models.Color.name.field.name}"
+        )
+        color_color_key = (
+            f"{catalog.models.Garment.color.field.name}"
+            f"__{catalog.models.Color.color.field.name}"
+        )
+
+        for garment in related_garments:
+            size = garment[size_key]
+            color_name = garment[color_name_key]
+            count = garment[count_key]
+            hex_color = garment[color_color_key]
+            garment_id = garment[garment_id_key]
+
+            result["garments"][size][color_name] = {
+                "count": count,
+                "hex": hex_color,
+                "id": garment_id,
+            }
+
+        return rest_framework.response.Response(result)

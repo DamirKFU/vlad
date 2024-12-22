@@ -122,6 +122,9 @@ class GarmentManager(django.db.models.Manager):
             f"{Garment.color.field.name}__{Color.color.field.name}",
         )
 
+    def items_by_category(self, category):
+        return self.all_items().filter(category=category)
+
 
 class Garment(django.db.models.Model):
     objects = GarmentManager()
@@ -248,6 +251,14 @@ class ProductManager(django.db.models.Manager):
                 "price",
                 "category__name",
             )
+        )
+
+    def detail_view(self):
+        return self.all_items().only(
+            "id",
+            "name",
+            "price",
+            "category__id",
         )
 
 

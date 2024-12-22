@@ -24,4 +24,9 @@ urlpatterns = [
         catalog.views.ProductListView.as_view(),
         name="products",
     ),
+    django.urls.path(
+        "product/<int:product_id>/",
+        catalog.views.ProductDetailView.as_view(),
+        name="product-detail",
+    ),
 ]
