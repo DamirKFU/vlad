@@ -47,7 +47,7 @@ function Register() {
                         </div>
                         <form id="login-form" onSubmit={handleSubmit}>
                             <div className={styles.formGroup}>
-                                <label htmlFor="username">User name</label>
+                                <label htmlFor="username">Username</label>
                                 <input 
                                     type="text" 
                                     id="username" 
@@ -108,7 +108,7 @@ function Register() {
                         </div>
                     </div>
                     <div className={styles.imageSection}>
-                        <img src="https://static.tildacdn.com/stor3264-6539-4332-b765-346164306437/39579332.jpg" alt="African woman in headwrap" />
+                        <img src="https://static.tildacdn.com/stor3264-6539-4332-b765-346164306437/39579332.jpg" alt="Some stylish man" />
                     </div>
                 </div>
             </div>

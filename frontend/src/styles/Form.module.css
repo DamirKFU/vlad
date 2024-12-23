@@ -1,19 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&display=swap");
 
-.root {
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Montserrat", sans-serif;
+
+.html {
+  overflow: hidden; 
 }
 
 .body {
-  overflow: hidden; 
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 8px;
+  padding: 8px;
   min-height: 100vh;
   background-color: #f5f5f5;
   font-family: "Montserrat", sans-serif;
@@ -38,7 +34,6 @@
 .imageSection {
   flex: 1;
   position: relative;
-  overflow: hidden;
 }
 
 .imageSection img {
@@ -153,6 +148,26 @@
 .createAccount a {
   color: #4444ff;
   text-decoration: none;
+}
+
+.formGroup {
+  position: relative;
+  align-items: center;
+  justify-content: center; 
+}
+
+.togglePassword {
+  position: absolute;
+  right: 1rem;
+  top: 55%;
+  background: none;
+  border: none;
+  cursor: pointer;
+
+}
+
+input {
+  padding-right: 40px; /* Чтобы текст не наезжал на кнопку */
 }
 
 @media (max-width: 768px) {

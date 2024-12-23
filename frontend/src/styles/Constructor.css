@@ -25,16 +25,14 @@
 }
 
 .color-circle {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid transparent;
 }
 .color-circle.selected {
-  border-color: black;
-  background-image: url('https://static.tildacdn.com/tild6230-6263-4431-b732-306633643936/arrow_black_1.svg');
-  background-size: cover;
+  border: 2px solid #000;
 }
 
 .menu-header {
@@ -114,3 +112,46 @@ input:checked + span {
     margin-bottom: 0.5rem;
   }
 }
+
+
+.fade-out {
+  opacity: 0;
+  transition: opacity 500sms ease-out;
+}
+
+.relative {
+  position: relative;
+}
+
+.text-overlay {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -42%);
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 90%;
+  max-width: 600px;
+}
+
+.overlay-text {
+  font-size: 2vw;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.error-message {
+    background-color: red;
+    color: white;
+    padding: 2vh;
+    margin-top: 10px;
+    font-weight: bold;
+    border-radius: 4px;
+}
+

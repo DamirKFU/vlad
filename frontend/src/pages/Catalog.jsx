@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import '../styles/Catalog.css';
+import Preloader from '../components/common/Preloader';
+import ErrorMessage from '../components/common/ErrorMessage';
 
 const Catalog = () => {
   const [products, setProducts] = useState([]);
@@ -27,24 +29,14 @@ const Catalog = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div className="catalog-loading">
-        <div className="loading-spinner"></div>
-        <p>Загрузка каталога...</p>
-      </div>
-    );
+    return <Preloader message="Загрузка каталога..." />;
   }
 
   if (error) {
-    return (
-      <div className="catalog-error">
-        <h2>Произошла ошибка</h2>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()}>
-          Попробовать снова
-        </button>
-      </div>
-    );
+    return <ErrorMessage 
+      message={error} 
+      onRetry={() => window.location.reload()} 
+    />;
   }
 
   if (!products || products.length === 0) {
@@ -72,7 +64,7 @@ const Catalog = () => {
         <button className="filter-btn">Плотные</button>
         <button className="filter-btn">Премиум</button>
         <button className="filter-btn">С экстастаном</button>
-        <button className="filter-btn">Крашеные</button>
+        <button className="filter-btn">Кр��шеные</button>
         <button className="filter-btn">Поло</button>
       </div>
 
