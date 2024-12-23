@@ -2,14 +2,20 @@ import django.shortcuts
 import rest_framework.serializers
 
 import catalog.models
+import catalog.validators
 
 
 class ConstructorProductCreateSerializer(
     rest_framework.serializers.Serializer
 ):
     garment_id = rest_framework.serializers.IntegerField()
-    image = rest_framework.serializers.ImageField()
-    embroidery_image = rest_framework.serializers.ImageField(required=False)
+    image = rest_framework.serializers.ImageField(
+        validators=[catalog.validators.validate_file_size]
+    )
+    embroidery_image = rest_framework.serializers.ImageField(
+        required=False,
+        validators=[catalog.validators.validate_file_size]
+    )
 
     def create(self, validated_data):
         garment_id = validated_data.pop("garment_id")
