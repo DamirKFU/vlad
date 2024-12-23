@@ -14,7 +14,7 @@ class ConstructorProductCreateSerializer(
     )
     embroidery_image = rest_framework.serializers.ImageField(
         required=False,
-        validators=[catalog.validators.validate_file_size]
+        validators=[catalog.validators.validate_file_size],
     )
 
     def create(self, validated_data):
