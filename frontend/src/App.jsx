@@ -12,6 +12,7 @@ import Catalog from "./pages/Catalog"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
 import api from "./api";
+import Cart from './pages/Cart';
 
 
 function Logout() {
@@ -46,6 +47,7 @@ function App() {
           <Route path="*" element={<Http404 />}/>
           <Route path="/catalog" element={<Catalog />}/>
           <Route path="/product/:productId" element={<ProductDetail />}/>
+          <Route path="/cart" element={<Cart />} />
         </Routes>
       </BrowserRouter>
   )

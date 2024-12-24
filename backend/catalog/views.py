@@ -124,3 +124,130 @@ class ProductDetailView(rest_framework.views.APIView):
             }
 
         return rest_framework.response.Response(result)
+
+
+class AddToCartView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = catalog.serializers.AddToCartSerializer(data=request.data)
+        if serializer.is_valid():
+            product = serializer.validated_data["product"]
+            garment = serializer.validated_data["garment"]
+
+            cart, _ = catalog.models.Cart.objects.get_or_create(
+                user=request.user
+            )
+
+            cart_item = catalog.models.CartItem.objects.create(
+                product=product,
+                garment=garment,
+                quantity=1,
+            )
+
+            cart.items.add(cart_item)
+
+            return rest_framework.response.Response(
+                {"message": "Товар успешно добавлен в корзину"},
+                status=rest_framework.status.HTTP_201_CREATED,
+            )
+
+        return rest_framework.response.Response(
+            serializer.errors,
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class CartView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        cart = django.shortcuts.get_object_or_404(
+            catalog.models.Cart, user=request.user
+        )
+
+        cart_items = []
+        for item in cart.items.all():
+            cart_items.append(
+                {
+                    "id": item.id,
+                    "product_id": item.product.id,
+                    "garment_id": item.garment.id,
+                    "name": item.product.name,
+                    "size": item.garment.size,
+                    "color": item.garment.color.name,
+                    "color_hex": item.garment.color.color,
+                    "price": item.product.price,
+                    "quantity": item.quantity,
+                    "total_price": item.product.price * item.quantity,
+                    "image": (
+                        request.build_absolute_uri(
+                            item.product.image.image.url
+                        )
+                        if hasattr(item.product, "image")
+                        else None
+                    ),
+                }
+            )
+
+        return rest_framework.response.Response(cart_items)
+
+    def delete(self, request, *args, **kwargs):
+        item_id = request.data.get("item_id")
+        if not item_id:
+            return rest_framework.response.Response(
+                {"error": "item_id is required"},
+                status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            )
+
+        cart = django.shortcuts.get_object_or_404(
+            catalog.models.Cart, user=request.user
+        )
+
+        try:
+            cart_item = cart.items.get(id=item_id)
+            cart.items.remove(cart_item)
+            cart_item.delete()
+            return rest_framework.response.Response(
+                {"message": "Товар успешно удален из корзины"}
+            )
+        except catalog.models.CartItem.DoesNotExist:
+            return rest_framework.response.Response(
+                {"error": "Товар не найден в корзине"},
+                status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )
+
+
+class UpdateCartItemView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def patch(self, request, item_id, *args, **kwargs):
+        quantity = request.data.get("quantity")
+        if not quantity:
+            return rest_framework.response.Response(
+                {"error": "quantity is required"},
+                status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            )
+
+        cart = django.shortcuts.get_object_or_404(
+            catalog.models.Cart, user=request.user
+        )
+
+        try:
+            cart_item = cart.items.get(id=item_id)
+            cart_item.quantity = quantity
+            cart_item.save()
+
+            return rest_framework.response.Response(
+                {
+                    "message": "Количество товара успешно обновлено",
+                    "quantity": cart_item.quantity,
+                    "total_price": cart_item.product.price
+                    * cart_item.quantity,
+                }
+            )
+        except catalog.models.CartItem.DoesNotExist:
+            return rest_framework.response.Response(
+                {"error": "Товар не найден в корзине"},
+                status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )

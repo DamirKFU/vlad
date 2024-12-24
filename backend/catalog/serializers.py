@@ -72,3 +72,25 @@ class ProductSerializer(rest_framework.serializers.ModelSerializer):
             )
 
         return None
+
+
+class AddToCartSerializer(rest_framework.serializers.Serializer):
+    id_product = rest_framework.serializers.IntegerField()
+    id_garment = rest_framework.serializers.IntegerField()
+
+    def validate(self, data):
+        product = django.shortcuts.get_object_or_404(
+            catalog.models.Product, id=data["id_product"]
+        )
+        garment = django.shortcuts.get_object_or_404(
+            catalog.models.Garment, id=data["id_garment"]
+        )
+
+        if garment.category != product.category:
+            raise rest_framework.serializers.ValidationError(
+                "Garment category does not match product category"
+            )
+
+        data["product"] = product
+        data["garment"] = garment
+        return data

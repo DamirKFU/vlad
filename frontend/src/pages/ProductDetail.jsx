@@ -40,12 +40,18 @@ const ProductDetail = () => {
     }
   };
 
-  const handleAddToCart = () => {
-    console.log('Добавление в корзину:', {
-      id_product: product.id,
-      id_garment: product.garments[selectedSize][selectedColor]?.id,
-      quantity,
-    });
+  const handleAddToCart = async () => {
+    try {
+        await api.post('catalog/cart/add/', {
+            id_product: product.id,
+            id_garment: product.garments[selectedSize][selectedColor].id
+        });
+        
+        alert('Товар успешно добавлен в корзину');
+    } catch (error) {
+        console.error('Ошибка при добавлении в корзину:', error);
+        alert('Ошибка при добавлении товара в корзину');
+    }
   };
 
   if (loading) return <p>Загрузка...</p>;

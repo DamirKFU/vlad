@@ -316,3 +316,50 @@ class ProductImage(BaseImage):
     class Meta:
         verbose_name = "изображение товара"
         verbose_name_plural = "изображения товаров"
+
+
+class CartItem(django.db.models.Model):
+    product = django.db.models.ForeignKey(
+        Product,
+        verbose_name="товар",
+        help_text="товар предмета корзины",
+        on_delete=django.db.models.CASCADE,
+    )
+    garment = django.db.models.ForeignKey(
+        Garment,
+        verbose_name="одежда",
+        help_text="одежда предмета корзины",
+        on_delete=django.db.models.CASCADE,
+    )
+    quantity = django.db.models.PositiveIntegerField(
+        "количество",
+        help_text="количество предмета корзины",
+        default=1,
+        validators=[
+            django.core.validators.MinValueValidator(1),
+        ],
+    )
+
+    class Meta:
+        verbose_name = "предмет корзины"
+        verbose_name_plural = "предметы корзины"
+
+
+class Cart(django.db.models.Model):
+    items = django.db.models.ManyToManyField(
+        CartItem,
+        verbose_name="предметы корзины",
+        help_text="предметы корзины",
+    )
+    user = django.db.models.ForeignKey(
+        users.models.User,
+        verbose_name="пользователь",
+        help_text="пользователь корзины",
+        on_delete=django.db.models.CASCADE,
+        related_name="carts",
+        related_query_name="carts",
+    )
+
+    class Meta:
+        verbose_name = "корзина"
+        verbose_name_plural = "корзины"

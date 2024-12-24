@@ -29,4 +29,19 @@ urlpatterns = [
         catalog.views.ProductDetailView.as_view(),
         name="product-detail",
     ),
+    django.urls.path(
+        "cart/add/",
+        catalog.views.AddToCartView.as_view(),
+        name="cart-add",
+    ),
+    django.urls.path(
+        "cart/",
+        catalog.views.CartView.as_view(),
+        name="cart",
+    ),
+    django.urls.path(
+        "cart/item/<int:item_id>/",
+        catalog.views.UpdateCartItemView.as_view(),
+        name="cart-item-update",
+    ),
 ]
