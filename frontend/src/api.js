@@ -1,6 +1,7 @@
 import axios from "axios";
 import Cookies from 'js-cookie';
 
+
 const api = axios.create({
     baseURL: "http://localhost:8000/api/",
     withCredentials: true
@@ -22,6 +23,17 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        return Promise.reject(error);
+    }
+);
+
+api.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response && error.response.status === 403) {
+            // Перенаправление на страницу логина
+            window.location.href = '/login'; // Замените '/login' на ваш путь к странице логина
+        }
         return Promise.reject(error);
     }
 );
