@@ -160,6 +160,11 @@ class Garment(django.db.models.Model):
             django.core.validators.MinValueValidator(0),
         ],
     )
+    price = django.db.models.PositiveIntegerField(
+        "цена",
+        help_text="цена одежды",
+        default=0,
+    )
 
     class Meta:
         verbose_name = "одежда"
