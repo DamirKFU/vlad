@@ -108,6 +108,7 @@ class GarmentManager(django.db.models.Manager):
         queryset = (
             super()
             .get_queryset()
+            .filter(count__gt=0)
             .select_related(
                 Garment.category.field.name,
                 Garment.color.field.name,
@@ -124,6 +125,9 @@ class GarmentManager(django.db.models.Manager):
 
     def items_by_category(self, category):
         return self.all_items().filter(category=category)
+
+    def items_by_product(self, product):
+        return self.all_items().filter(products=product)
 
 
 class Garment(django.db.models.Model):
@@ -243,43 +247,17 @@ class ConstructorEmbroideryImage(BaseImage):
         verbose_name_plural = "изображения вышивки"
 
 
-class ProductManager(django.db.models.Manager):
-    def all_items(self):
-        return (
-            super()
-            .get_queryset()
-            .select_related("category")
-            .prefetch_related("image")
-            .only(
-                "id",
-                "name",
-                "price",
-                "category__name",
-            )
-        )
-
-    def detail_view(self):
-        return self.all_items().only(
-            "id",
-            "name",
-            "price",
-            "category__id",
-        )
-
-
 class Product(AbstractModel):
-    objects = ProductManager()
 
     price = django.db.models.PositiveIntegerField(
         "цена",
         help_text="цена товара",
         default=0,
     )
-    category = django.db.models.ForeignKey(
-        Category,
-        on_delete=django.db.models.CASCADE,
-        verbose_name="категория",
-        help_text="атегория товара",
+    garments = django.db.models.ManyToManyField(
+        Garment,
+        verbose_name="футболки",
+        help_text="футболки товара",
         related_name="products",
         related_query_name="products",
     )
@@ -323,6 +301,37 @@ class ProductImage(BaseImage):
         verbose_name_plural = "изображения товаров"
 
 
+class ProductAdditionalImage(BaseImage):
+    product = django.db.models.ForeignKey(
+        Product,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="товар",
+        help_text="тов��р изображения",
+        related_name="additional_images",
+        related_query_name="additional_images",
+    )
+
+    def image_tmb(self):
+        if self.image:
+            tag = f'<img src="{self.get_image_330x440().url}">'
+            return django.utils.safestring.mark_safe(tag)
+
+        return "изображение отсутствует"
+
+    def get_image_330x440(self):
+        return sorl.thumbnail.get_thumbnail(
+            self.image,
+            "330x440",
+            upscale=False,
+            crop=False,
+            quality=100,
+        )
+
+    class Meta:
+        verbose_name = "дополнительное изображение товара"
+        verbose_name_plural = "дополнительные изображения товаров"
+
+
 class CartItem(django.db.models.Model):
     product = django.db.models.ForeignKey(
         Product,
@@ -337,7 +346,7 @@ class CartItem(django.db.models.Model):
         on_delete=django.db.models.CASCADE,
     )
     quantity = django.db.models.PositiveIntegerField(
-        "количество",
+        "коли��ество",
         help_text="количество предмета корзины",
         default=1,
         validators=[
@@ -350,9 +359,94 @@ class CartItem(django.db.models.Model):
         verbose_name_plural = "предметы корзины"
 
 
+class CartManager(django.db.models.Manager):
+    def get_cart_with_items(self):
+        return (
+            super()
+            .get_queryset()
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    CartItemQuantity.cart.field.related_query_name(),
+                    queryset=(
+                        CartItemQuantity.objects.select_related(
+                            CartItemQuantity.item.field.name,
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.product.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.product.field.name}"
+                                f"__{Product.image.related.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                                f"__{Garment.color.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                                f"__{Garment.category.field.name}"
+                            ),
+                        ).only(
+                            (
+                                f"{CartItemQuantity.cart.field.name}"
+                                f"__{Cart.id.field.name}"
+                            ),
+                            CartItemQuantity.quantity.field.name,
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.id.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.product.field.name}"
+                                f"__{Product.name.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.product.field.name}"
+                                f"__{Product.price.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                                f"__{Garment.size.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                                f"__{Garment.price.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                                f"__{Garment.color.field.name}"
+                                f"__{Color.color.field.name}"
+                            ),
+                            (
+                                f"{CartItemQuantity.item.field.name}"
+                                f"__{CartItem.garment.field.name}"
+                                f"__{Garment.category.field.name}"
+                                f"__{Category.name.field.name}"
+                            ),
+                        )
+                    ),
+                )
+            )
+        )
+
+
 class Cart(django.db.models.Model):
+    objects = CartManager()
     items = django.db.models.ManyToManyField(
         CartItem,
+        through="CartItemQuantity",
         verbose_name="предметы корзины",
         help_text="предметы корзины",
     )
@@ -368,3 +462,32 @@ class Cart(django.db.models.Model):
     class Meta:
         verbose_name = "корзина"
         verbose_name_plural = "корзины"
+
+
+class CartItemQuantity(django.db.models.Model):
+    cart = django.db.models.ForeignKey(
+        Cart,
+        verbose_name="корзина",
+        help_text="корзина",
+        on_delete=django.db.models.CASCADE,
+        related_name="cartitemquantity_set",
+        related_query_name="cartitemquantity_set",
+    )
+    item = django.db.models.ForeignKey(
+        CartItem,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="предмет корзины",
+        help_text="предмет корзины",
+    )
+    quantity = django.db.models.PositiveIntegerField(
+        "количество",
+        help_text="количество предмета в корзине",
+        default=1,
+        validators=[
+            django.core.validators.MinValueValidator(1),
+        ],
+    )
+
+    class Meta:
+        verbose_name = "количество предмета в корзине"
+        verbose_name_plural = "количества предметов в корзине"

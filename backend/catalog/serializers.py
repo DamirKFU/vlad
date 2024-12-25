@@ -2,6 +2,7 @@ import django.shortcuts
 import rest_framework.serializers
 
 import catalog.models
+import catalog.utils
 import catalog.validators
 
 
@@ -52,16 +53,14 @@ class CategorySerializer(rest_framework.serializers.ModelSerializer):
 
 class ProductSerializer(rest_framework.serializers.ModelSerializer):
     image = rest_framework.serializers.SerializerMethodField()
-    category = CategorySerializer()
 
     class Meta:
         model = catalog.models.Product
         fields = [
             "id",
             "name",
-            "price",
-            "category",
             "image",
+            "price",
         ]
 
     def get_image(self, obj):
@@ -80,15 +79,21 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
 
     def validate(self, data):
         product = django.shortcuts.get_object_or_404(
-            catalog.models.Product, id=data["id_product"]
+            catalog.models.Product.objects.only("id"),
+            id=data["id_product"],
         )
         garment = django.shortcuts.get_object_or_404(
-            catalog.models.Garment, id=data["id_garment"]
+            catalog.models.Garment.objects.only("id"),
+            id=data["id_garment"],
         )
 
-        if garment.category != product.category:
+        if (
+            not product.garments.values_list("id", flat=True)
+            .filter(id=garment.id)
+            .exists()
+        ):
             raise rest_framework.serializers.ValidationError(
-                "Garment category does not match product category"
+                "Данная одежда не принадлежит этому товару"
             )
 
         data["product"] = product

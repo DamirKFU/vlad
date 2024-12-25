@@ -1,5 +1,3 @@
-import collections
-
 import django.db
 import django.shortcuts
 import rest_framework.generics
@@ -9,44 +7,16 @@ import rest_framework.views
 
 import catalog.models
 import catalog.serializers
+import catalog.utils
 
 
 class GarmentListView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
 
     def get(self, request, *args, **kwargs):
-        garments = catalog.models.Garment.objects.all_items()
-        result = collections.defaultdict(lambda: collections.defaultdict(dict))
-        category_name_key = (
-            f"{catalog.models.Garment.category.field.name}"
-            f"__{catalog.models.Category.name.field.name}"
-        )
-        size_key = catalog.models.Garment.size.field.name
-        count_key = catalog.models.Garment.count.field.name
-        garment_id_key = catalog.models.Garment.id.field.name
-        color_name_key = (
-            f"{catalog.models.Garment.color.field.name}"
-            f"__{catalog.models.Color.name.field.name}"
-        )
-        color_color_key = (
-            f"{catalog.models.Garment.color.field.name}"
-            f"__{catalog.models.Color.color.field.name}"
-        )
-        for garment in garments:
-            category_name = garment[category_name_key]
-            size = garment[size_key]
-            color_name = garment[color_name_key]
-            count = garment[count_key]
-            hex_color = garment[color_color_key]
-            garment_id = garment[garment_id_key]
-
-            result[category_name][size][color_name] = {
-                "count": count,
-                "hex": hex_color,
-                "id": garment_id,
-            }
-
-        return rest_framework.response.Response(result)
+        garments_data = catalog.models.Garment.objects.all_items()
+        data = catalog.utils.get_structured_garments(garments_data)
+        return rest_framework.response.Response(data)
 
 
 class ConstructorProductCreateView(rest_framework.views.APIView):
@@ -74,7 +44,7 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
 class ProductListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     serializer_class = catalog.serializers.ProductSerializer
-    queryset = catalog.models.Product.objects.all_items()
+    queryset = catalog.models.Product.objects
 
 
 class ProductDetailView(rest_framework.views.APIView):
@@ -82,46 +52,16 @@ class ProductDetailView(rest_framework.views.APIView):
 
     def get(self, request, product_id, *args, **kwargs):
         product = django.shortcuts.get_object_or_404(
-            catalog.models.Product.objects.detail_view(), id=product_id
+            catalog.models.Product, id=product_id
         )
-        related_garments = catalog.models.Garment.objects.items_by_category(
-            product.category
-        )
-
+        garments_data = product.garments.items_by_product(product)
         result = {
             "id": product.id,
             "name": product.name,
             "image": request.build_absolute_uri(product.image.image.url),
             "price": product.price,
-            "garments": collections.defaultdict(
-                lambda: collections.defaultdict(dict)
-            ),
+            "garments": catalog.utils.get_structured_garments(garments_data),
         }
-
-        size_key = catalog.models.Garment.size.field.name
-        count_key = catalog.models.Garment.count.field.name
-        garment_id_key = catalog.models.Garment.id.field.name
-        color_name_key = (
-            f"{catalog.models.Garment.color.field.name}"
-            f"__{catalog.models.Color.name.field.name}"
-        )
-        color_color_key = (
-            f"{catalog.models.Garment.color.field.name}"
-            f"__{catalog.models.Color.color.field.name}"
-        )
-
-        for garment in related_garments:
-            size = garment[size_key]
-            color_name = garment[color_name_key]
-            count = garment[count_key]
-            hex_color = garment[color_color_key]
-            garment_id = garment[garment_id_key]
-
-            result["garments"][size][color_name] = {
-                "count": count,
-                "hex": hex_color,
-                "id": garment_id,
-            }
 
         return rest_framework.response.Response(result)
 
@@ -138,17 +78,28 @@ class AddToCartView(rest_framework.views.APIView):
             cart, _ = catalog.models.Cart.objects.get_or_create(
                 user=request.user
             )
-
-            cart_item = catalog.models.CartItem.objects.create(
+            cart_item, _ = catalog.models.CartItem.objects.get_or_create(
                 product=product,
                 garment=garment,
-                quantity=1,
             )
 
-            cart.items.add(cart_item)
+            cart_item_quantity, created = (
+                catalog.models.CartItemQuantity.objects.get_or_create(
+                    cart=cart, item=cart_item, defaults={"quantity": 1}
+                )
+            )
+
+            if not created:
+                cart_item_quantity.quantity += 1
+                cart_item_quantity.save()
 
             return rest_framework.response.Response(
-                {"message": "Товар успешно добавлен в корзину"},
+                {
+                    "message": "Товар успешно добавлен в корзину",
+                    "quantity": cart_item_quantity.quantity,
+                    "total_price": (product.price + garment.price)
+                    * cart_item_quantity.quantity,
+                },
                 status=rest_framework.status.HTTP_201_CREATED,
             )
 
@@ -163,11 +114,17 @@ class CartView(rest_framework.views.APIView):
 
     def get(self, request, *args, **kwargs):
         cart = django.shortcuts.get_object_or_404(
-            catalog.models.Cart, user=request.user
+            catalog.models.Cart.objects.get_cart_with_items(),
+            user=request.user,
         )
 
         cart_items = []
-        for item in cart.items.all():
+        for cart_item_quantity in cart.cartitemquantity_set.all():
+            item = cart_item_quantity.item
+            total_price = (
+                item.product.price + item.garment.price
+            ) * cart_item_quantity.quantity
+
             cart_items.append(
                 {
                     "id": item.id,
@@ -175,11 +132,12 @@ class CartView(rest_framework.views.APIView):
                     "garment_id": item.garment.id,
                     "name": item.product.name,
                     "size": item.garment.size,
-                    "color": item.garment.color.name,
+                    "category": item.garment.category.name,
                     "color_hex": item.garment.color.color,
-                    "price": item.product.price,
-                    "quantity": item.quantity,
-                    "total_price": item.product.price * item.quantity,
+                    "product_price": item.product.price,
+                    "garment_price": item.garment.price,
+                    "quantity": cart_item_quantity.quantity,
+                    "total_price": total_price,
                     "image": (
                         request.build_absolute_uri(
                             item.product.image.image.url
@@ -223,30 +181,54 @@ class UpdateCartItemView(rest_framework.views.APIView):
 
     def patch(self, request, item_id, *args, **kwargs):
         quantity = request.data.get("quantity")
-        if not quantity:
+        if not quantity or int(quantity) < 1:
             return rest_framework.response.Response(
-                {"error": "quantity is required"},
+                {"error": "Некорректное количество"},
                 status=rest_framework.status.HTTP_400_BAD_REQUEST,
             )
 
-        cart = django.shortcuts.get_object_or_404(
-            catalog.models.Cart, user=request.user
-        )
-
         try:
-            cart_item = cart.items.get(id=item_id)
-            cart_item.quantity = quantity
-            cart_item.save()
+            cart_item_quantity = (
+                catalog.models.CartItemQuantity.objects.select_related(
+                    "item__product", "item__garment"
+                ).get(cart__user=request.user, item__id=item_id)
+            )
+
+            cart_item_quantity.quantity = int(quantity)
+            cart_item_quantity.save()
+
+            total_price = (
+                cart_item_quantity.item.product.price
+                + cart_item_quantity.item.garment.price
+            ) * cart_item_quantity.quantity
 
             return rest_framework.response.Response(
                 {
                     "message": "Количество товара успешно обновлено",
-                    "quantity": cart_item.quantity,
-                    "total_price": cart_item.product.price
-                    * cart_item.quantity,
+                    "quantity": cart_item_quantity.quantity,
+                    "total_price": total_price,
                 }
             )
-        except catalog.models.CartItem.DoesNotExist:
+
+        except catalog.models.CartItemQuantity.DoesNotExist:
+            return rest_framework.response.Response(
+                {"error": "Товар не найден в корзине"},
+                status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )
+
+    def delete(self, request, item_id, *args, **kwargs):
+        try:
+            cart_item_quantity = catalog.models.CartItemQuantity.objects.get(
+                cart__user=request.user, item__id=item_id
+            )
+            cart_item = cart_item_quantity.item
+            cart_item_quantity.delete()
+            cart_item.delete()
+
+            return rest_framework.response.Response(
+                {"message": "Товар успешно удален из корзины"}
+            )
+        except catalog.models.CartItemQuantity.DoesNotExist:
             return rest_framework.response.Response(
                 {"error": "Товар не найден в корзине"},
                 status=rest_framework.status.HTTP_404_NOT_FOUND,

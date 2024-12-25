@@ -6,9 +6,9 @@ import '../styles/ProductDetail.css';
 const ProductDetail = () => {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  const [quantity, setQuantity] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -16,82 +16,130 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       try {
         const response = await api.get(`catalog/product/${productId}/`);
-        setProduct(response.data);
+        const data = response.data;
+        setProduct(data);
+        // Устанавливаем первые значения по умолчанию
+        const firstCategory = Object.keys(data.garments)[0];
+        setSelectedCategory(firstCategory);
+        const firstSize = Object.keys(data.garments[firstCategory])[0];
+        setSelectedSize(firstSize);
+        const firstColor = Object.keys(data.garments[firstCategory][firstSize])[0];
+        setSelectedColor(firstColor);
         setLoading(false);
       } catch (err) {
         setError('Ошибка при загрузке данных о товаре');
         setLoading(false);
       }
     };
-
     fetchProduct();
   }, [productId]);
 
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+    const firstSize = Object.keys(product.garments[category])[0];
+    setSelectedSize(firstSize);
+    const firstColor = Object.keys(product.garments[category][firstSize])[0];
+    setSelectedColor(firstColor);
+  };
+
   const handleSizeChange = (size) => {
     setSelectedSize(size);
-    setSelectedColor(''); // Сбросить выбранный цвет
-    setQuantity(0); // Сбросить количество при смене размера
+    const firstColor = Object.keys(product.garments[selectedCategory][size])[0];
+    setSelectedColor(firstColor);
   };
 
   const handleColorChange = (color) => {
     setSelectedColor(color);
-    if (product && selectedSize) {
-      setQuantity(product.garments[selectedSize][color].count); // Установить количество для выбранного цвета
-    }
   };
 
   const handleAddToCart = async () => {
     try {
-        await api.post('catalog/cart/add/', {
-            id_product: product.id,
-            id_garment: product.garments[selectedSize][selectedColor].id
-        });
-        
-        alert('Товар успешно добавлен в корзину');
+      const selectedGarment = product.garments[selectedCategory][selectedSize][selectedColor].id;
+      await api.post('catalog/cart/add/', {
+        id_product: product.id,
+        id_garment: selectedGarment
+      });
+      alert('Товар успешно добавлен в корзину');
     } catch (error) {
-        console.error('Ошибка при добавлении в корзину:', error);
-        alert('Ошибка при добавлении товара в корзину');
+      console.error('Ошибка при добавлении в корзину:', error);
+      alert('Ошибка при добавлении товара в корзину');
     }
   };
 
   if (loading) return <p>Загрузка...</p>;
   if (error) return <p>{error}</p>;
-
-  // Теперь просто используем product.image
-  const imageUrl = product.image || '/placeholder.jpg'; // Если product.image не существует, используем заглушку
+  if (!product) return null;
 
   return (
     <div className="product-detail">
-      <h1>{product.name}</h1>
-      <img src={imageUrl} alt={product.name} />
-      <p>Цена: {product.price} руб</p>
-
-      <div className="size-selection">
-        <h3>Выберите размер:</h3>
-        {Object.keys(product.garments).map(size => (
-          <button key={size} onClick={() => handleSizeChange(size)}>
-            {size}
-          </button>
-        ))}
+      <div className="product-image">
+        <img src={product.image} alt={product.name} />
       </div>
+      <div className="product-info">
+        <h2>{product.name}</h2>
+        <p className="price">Цена: {product.price} ₽</p>
 
-      {selectedSize && (
-        <div className="color-selection">
-          <h3>Выберите цвет:</h3>
-          {Object.keys(product.garments[selectedSize]).map(color => (
-            <button key={color} onClick={() => handleColorChange(color)}>
-              {color}
-            </button>
-          ))}
-        </div>
-      )}
+        <div className="options-container">
+          <div className="categories">
+            <h3>Категория</h3>
+            <div className="category-buttons">
+              {Object.keys(product.garments).map(category => (
+                <button
+                  key={category}
+                  onClick={() => handleCategoryChange(category)}
+                  className={selectedCategory === category ? 'selected' : ''}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {selectedColor && (
-        <div className="quantity-selection">
-          <h3>Количество: {quantity}</h3>
-          <button onClick={handleAddToCart}>Добавить в корзину</button>
+          <div className="sizes">
+            <h3>Размер</h3>
+            <div className="size-buttons">
+              {Object.keys(product.garments[selectedCategory] || {}).map(size => (
+                <button
+                  key={size}
+                  onClick={() => handleSizeChange(size)}
+                  className={selectedSize === size ? 'selected' : ''}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="colors">
+            <h3>Цвет</h3>
+            <div className="color-buttons">
+              {Object.entries(product.garments[selectedCategory][selectedSize] || {}).map(([colorName, data]) => (
+                <button
+                  key={colorName}
+                  onClick={() => handleColorChange(colorName)}
+                  className={`color-button ${selectedColor === colorName ? 'selected' : ''}`}
+                  title={`${colorName} (${data.count} шт.)`}
+                >
+                  <span 
+                    className="color-swatch" 
+                    style={{ backgroundColor: data.hex }}
+                  />
+                  <span className="color-name">{colorName}</span>
+                  <span className="color-count">{data.count} шт.</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      )}
+
+        <button 
+          onClick={handleAddToCart} 
+          className="add-to-cart-button"
+          disabled={!selectedColor || !selectedSize}
+        >
+          Добавить в корзину
+        </button>
+      </div>
     </div>
   );
 };

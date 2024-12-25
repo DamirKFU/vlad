@@ -24,10 +24,18 @@ const Cart = () => {
 
     const handleUpdateQuantity = async (itemId, newQuantity) => {
         try {
-            await api.patch(`catalog/cart/item/${itemId}/`, {
+            const response = await api.patch(`catalog/cart/item/${itemId}/`, {
                 quantity: newQuantity
             });
-            fetchCart(); // Обновляем корзину после изменения количества
+            
+            // Обновляем только измененный элемент
+            setCartItems(prevItems => 
+                prevItems.map(item => 
+                    item.id === itemId 
+                        ? { ...item, quantity: response.data.quantity, total_price: response.data.total_price }
+                        : item
+                )
+            );
         } catch (err) {
             console.error('Ошибка при обновлении количества:', err);
         }
@@ -35,10 +43,9 @@ const Cart = () => {
 
     const handleRemoveItem = async (itemId) => {
         try {
-            await api.delete('catalog/cart/', {
-                data: { item_id: itemId }
-            });
-            fetchCart(); // Обновляем корзину после удаления
+            await api.delete(`catalog/cart/item/${itemId}/`);
+            // Удаляем элемент из состояния
+            setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
         } catch (err) {
             console.error('Ошибка при удалении товара:', err);
         }
@@ -50,7 +57,7 @@ const Cart = () => {
     const totalSum = cartItems.reduce((sum, item) => sum + item.total_price, 0);
 
     return (
-        <div className="cart">
+        <div className="cart-container">
             <h1>Корзина</h1>
             {cartItems.length === 0 ? (
                 <p>Ваша корзина пуста</p>
@@ -62,38 +69,55 @@ const Cart = () => {
                                 <div className="cart-item-image">
                                     <img src={item.image} alt={item.name} />
                                 </div>
-                                <div className="cart-item-info">
-                                    <h3>{item.name}</h3>
-                                    <p>Размер: {item.size}</p>
-                                    <p>Цвет: {item.color}</p>
-                                    <p>Цена: {item.price} руб</p>
-                                    <div className="quantity-controls">
+                                <div className="cart-item-details">
+                                    <div className="cart-item-header">
+                                        <h3>{item.name}</h3>
                                         <button 
-                                            onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                            disabled={item.quantity <= 1}
+                                            className="remove-button"
+                                            onClick={() => handleRemoveItem(item.id)}
+                                            aria-label="Удалить товар"
                                         >
-                                            -
-                                        </button>
-                                        <span>{item.quantity}</span>
-                                        <button 
-                                            onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                                        >
-                                            +
+                                            ✕
                                         </button>
                                     </div>
-                                    <p>Итого: {item.total_price} руб</p>
-                                    <button 
-                                        className="remove-button"
-                                        onClick={() => handleRemoveItem(item.id)}
-                                    >
-                                        Удалить
-                                    </button>
+                                    <div className="cart-item-specs">
+                                        <div className="spec-group">
+                                            <div className="spec-tag">{item.size}</div>
+                                            <div className="spec-tag category-tag">{item.category}</div>
+                                        </div>
+                                        <div 
+                                            className="color-tag" 
+                                            style={{ backgroundColor: item.color_hex }}
+                                            title={item.color}
+                                        />
+                                    </div>
+                                    <div className="cart-item-prices">
+                                        <div className="total-price">
+                                            {item.total_price} ₽
+                                        </div>
+                                        <div className="quantity-controls">
+                                            <button 
+                                                className="quantity-btn"
+                                                onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                                disabled={item.quantity <= 1}
+                                            >
+                                                <span className="quantity-btn-icon">−</span>
+                                            </button>
+                                            <span className="quantity-value">{item.quantity}</span>
+                                            <button 
+                                                className="quantity-btn"
+                                                onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                                            >
+                                                <span className="quantity-btn-icon">+</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                     <div className="cart-summary">
-                        <h2>Итого к оплате: {totalSum} руб</h2>
+                        <h2>Итого к оплате: {totalSum} ₽</h2>
                         <button className="checkout-button">Оформить заказ</button>
                     </div>
                 </>

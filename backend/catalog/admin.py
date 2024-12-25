@@ -28,6 +28,16 @@ class ProductImageInline(
     model = catalog.models.ProductImage
 
 
+class ProductAdditionalImageInline(
+    sorl.thumbnail.admin.AdminImageMixin,
+    django.contrib.admin.TabularInline,
+):
+    fields = ["image", "image_tmb"]
+    readonly_fields = ["image_tmb"]
+    model = catalog.models.ProductAdditionalImage
+    extra = 1
+
+
 @django.contrib.admin.register(catalog.models.Category)
 class CategoryAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Category.name.field.name,)
@@ -75,7 +85,10 @@ class ProductAdmin(django.contrib.admin.ModelAdmin):
     list_display = (
         catalog.models.Product.name.field.name,
         catalog.models.Product.price.field.name,
-        catalog.models.Product.category.field.name,
     )
     list_display_links = (catalog.models.Product.name.field.name,)
-    inlines = (ProductImageInline,)
+    filter_horizontal = ("garments",)
+    inlines = [
+        ProductImageInline,
+        ProductAdditionalImageInline,
+    ]
