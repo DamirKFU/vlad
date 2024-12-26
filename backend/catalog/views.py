@@ -121,25 +121,21 @@ class CartView(rest_framework.views.APIView):
         )
 
         cart_items = []
-        for cart_item_quantity in cart.cartitemquantity_set.all():
-            item = cart_item_quantity.item
-            total_price = (
-                item.product.price + item.garment.price
-            ) * cart_item_quantity.quantity
-
+        for item_quantity in cart.cartitemquantity_set.all():
+            item = item_quantity.item
             cart_items.append(
                 {
                     "id": item.id,
                     "product_id": item.product.id,
                     "garment_id": item.garment.id,
                     "name": item.product.name,
-                    "size": item.garment.size,
                     "category": item.garment.category.name,
-                    "color_hex": item.garment.color.color,
-                    "product_price": item.product.price,
-                    "garment_price": item.garment.price,
-                    "quantity": cart_item_quantity.quantity,
-                    "total_price": total_price,
+                    "color": item.garment.color.color,
+                    "size": item.garment.size,
+                    "quantity": item_quantity.quantity,
+                    "price": item.product.price + item.garment.price,
+                    "total_price": (item.product.price + item.garment.price)
+                    * item_quantity.quantity,
                     "image": (
                         request.build_absolute_uri(
                             item.product.image.image.url
@@ -169,7 +165,7 @@ class CartView(rest_framework.views.APIView):
             cart.items.remove(cart_item)
             cart_item.delete()
             return rest_framework.response.Response(
-                {"message": "Товар у��пешно удален из корзины"}
+                {"message": "Товар успешно удален из корзины"}
             )
         except catalog.models.CartItem.DoesNotExist:
             return rest_framework.response.Response(

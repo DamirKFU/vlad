@@ -87,8 +87,7 @@ const Cart = () => {
                                         </div>
                                         <div 
                                             className="color-tag" 
-                                            style={{ backgroundColor: item.color_hex }}
-                                            title={item.color}
+                                            style={{ backgroundColor: item.color }}
                                         />
                                     </div>
                                     <div className="cart-item-prices">

@@ -160,7 +160,7 @@ class ItemModelTest(django.test.TestCase):
 
     def test_item_str(self):
         expected = (
-            f"Футблка({self.category}, {self.color}, {self.garment.size})"
+            f"Одежда({self.category}, {self.color}, {self.garment.size})"
         )
         self.assertEqual(
             str(self.garment),
