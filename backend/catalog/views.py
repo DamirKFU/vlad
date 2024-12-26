@@ -52,17 +52,19 @@ class ProductDetailView(rest_framework.views.APIView):
 
     def get(self, request, product_id, *args, **kwargs):
         product = django.shortcuts.get_object_or_404(
-            catalog.models.Product, id=product_id
+            catalog.models.Product.objects, id=product_id
         )
-        garments_data = product.garments.items_by_product(product)
+
+        garments_data = product.garments.items_by_product_detail(product)
         result = {
             "id": product.id,
             "name": product.name,
-            "image": request.build_absolute_uri(product.image.image.url),
             "price": product.price,
             "garments": catalog.utils.get_structured_garments(garments_data),
+            "images": catalog.utils.get_structured_images(
+                product, garments_data, request
+            ),
         }
-
         return rest_framework.response.Response(result)
 
 
@@ -167,7 +169,7 @@ class CartView(rest_framework.views.APIView):
             cart.items.remove(cart_item)
             cart_item.delete()
             return rest_framework.response.Response(
-                {"message": "Товар успешно удален из корзины"}
+                {"message": "Товар у��пешно удален из корзины"}
             )
         except catalog.models.CartItem.DoesNotExist:
             return rest_framework.response.Response(

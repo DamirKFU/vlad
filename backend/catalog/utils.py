@@ -37,3 +37,18 @@ def get_structured_garments(garments_data):
         }
 
     return result
+
+
+def get_structured_images(product, garments_data, request):
+    result = collections.defaultdict(lambda: collections.defaultdict(list))
+
+    additional_images = product.additional_images.get_images_for_garments(
+        product, garments_data
+    )
+
+    for image in additional_images:
+        result[image.category.name][image.color.name].append(
+            request.build_absolute_uri(image.get_image_330x440().url)
+        )
+
+    return result

@@ -32,7 +32,7 @@ class ProductAdditionalImageInline(
     sorl.thumbnail.admin.AdminImageMixin,
     django.contrib.admin.TabularInline,
 ):
-    fields = ["image", "image_tmb"]
+    fields = ["image", "image_tmb", "category", "color"]
     readonly_fields = ["image_tmb"]
     model = catalog.models.ProductAdditionalImage
     extra = 1

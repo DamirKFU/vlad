@@ -126,7 +126,7 @@ class GarmentManager(django.db.models.Manager):
     def items_by_category(self, category):
         return self.all_items().filter(category=category)
 
-    def items_by_product(self, product):
+    def items_by_product_detail(self, product):
         return self.all_items().filter(products=product)
 
 
@@ -181,7 +181,7 @@ class Garment(django.db.models.Model):
         )
 
     def __str__(self) -> str:
-        return f"Футблка({self.category}, {self.color}, {self.size})"
+        return f"Одежда({self.category}, {self.color}, {self.size})"
 
 
 class ConstructorProduct(django.db.models.Model):
@@ -256,8 +256,8 @@ class Product(AbstractModel):
     )
     garments = django.db.models.ManyToManyField(
         Garment,
-        verbose_name="футболки",
-        help_text="футболки товара",
+        verbose_name="одежды",
+        help_text="одежда товара",
         related_name="products",
         related_query_name="products",
     )
@@ -301,12 +301,43 @@ class ProductImage(BaseImage):
         verbose_name_plural = "изображения товаров"
 
 
+class ProductAdditionalImageManager(django.db.models.Manager):
+    def get_images_for_garments(self, product, garments_data):
+        return (
+            self.get_queryset()
+            .select_related("category", "color")
+            .filter(
+                product=product,
+                category__in=garments_data.values("category"),
+                color__in=garments_data.values("color"),
+            )
+        )
+
+
 class ProductAdditionalImage(BaseImage):
+    objects = ProductAdditionalImageManager()
+
     product = django.db.models.ForeignKey(
         Product,
         on_delete=django.db.models.CASCADE,
         verbose_name="товар",
-        help_text="тов��р изображения",
+        help_text="товар дополнительного изображения",
+        related_name="additional_images",
+        related_query_name="additional_images",
+    )
+    category = django.db.models.ForeignKey(
+        Category,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="категория",
+        help_text="категория дополнительного изображения",
+        related_name="additional_images",
+        related_query_name="additional_images",
+    )
+    color = django.db.models.ForeignKey(
+        Color,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="цвет",
+        help_text="цвет дополнительного изображения",
         related_name="additional_images",
         related_query_name="additional_images",
     )
@@ -346,7 +377,7 @@ class CartItem(django.db.models.Model):
         on_delete=django.db.models.CASCADE,
     )
     quantity = django.db.models.PositiveIntegerField(
-        "коли��ество",
+        "количество",
         help_text="количество предмета корзины",
         default=1,
         validators=[

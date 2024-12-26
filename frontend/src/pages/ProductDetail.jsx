@@ -18,13 +18,24 @@ const ProductDetail = () => {
         const response = await api.get(`catalog/product/${productId}/`);
         const data = response.data;
         setProduct(data);
-        // Устанавливаем первые значения по умолчанию
-        const firstCategory = Object.keys(data.garments)[0];
-        setSelectedCategory(firstCategory);
-        const firstSize = Object.keys(data.garments[firstCategory])[0];
-        setSelectedSize(firstSize);
-        const firstColor = Object.keys(data.garments[firstCategory][firstSize])[0];
-        setSelectedColor(firstColor);
+        
+        // Проверяем наличие данных перед установкой значений по умолчанию
+        if (data.garments && Object.keys(data.garments).length > 0) {
+          const firstCategory = Object.keys(data.garments)[0];
+          setSelectedCategory(firstCategory);
+          
+          if (data.garments[firstCategory] && Object.keys(data.garments[firstCategory]).length > 0) {
+            const firstSize = Object.keys(data.garments[firstCategory])[0];
+            setSelectedSize(firstSize);
+            
+            if (data.garments[firstCategory][firstSize] && 
+                Object.keys(data.garments[firstCategory][firstSize]).length > 0) {
+              const firstColor = Object.keys(data.garments[firstCategory][firstSize])[0];
+              setSelectedColor(firstColor);
+            }
+          }
+        }
+        
         setLoading(false);
       } catch (err) {
         setError('Ошибка при загрузке данных о товаре');
@@ -70,11 +81,37 @@ const ProductDetail = () => {
   if (error) return <p>{error}</p>;
   if (!product) return null;
 
+  const hasImages = selectedCategory && 
+                   selectedColor && 
+                   product.images && 
+                   product.images[selectedCategory] && 
+                   product.images[selectedCategory][selectedColor] && 
+                   product.images[selectedCategory][selectedColor].length > 0;
+
   return (
-    <div className="product-detail">
-      <div className="product-image">
-        <img src={product.image} alt={product.name} />
-      </div>
+    <div className={`product-detail ${!hasImages ? 'no-images' : ''}`}>
+      {hasImages && (
+        <div className="product-images">
+          {selectedCategory && 
+           selectedColor && 
+           product.images && 
+           product.images[selectedCategory] && 
+           product.images[selectedCategory][selectedColor] && 
+           product.images[selectedCategory][selectedColor].length > 0 ? (
+            <>
+              {product.images[selectedCategory][selectedColor].map((imageUrl, index) => (
+                <div key={index} className="product-image">
+                  <img 
+                    src={imageUrl} 
+                    alt={`${product.name} - ${selectedCategory} ${selectedColor} ${index + 1}`} 
+                  />
+                </div>
+              ))}
+            </>
+          ) : null}
+        </div>
+      )}
+      
       <div className="product-info">
         <h2>{product.name}</h2>
         <p className="price">Цена: {product.price} ₽</p>
