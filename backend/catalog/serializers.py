@@ -1,3 +1,4 @@
+import django.db
 import django.shortcuts
 import rest_framework.serializers
 
@@ -106,8 +107,15 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
         user = self.context["request"].user
         cart = django.shortcuts.get_object_or_404(
             catalog.models.Cart.objects.prefetch_related(
-                "items__product",
-                "items__garment",
+                django.db.models.Prefetch(
+                    "items",
+                    queryset=catalog.models.CartItem.objects.select_related(
+                        "product",
+                        "garment",
+                    ),
+                ),
+            ).select_related(
+                "user",
             ),
             user=user,
         )
@@ -126,23 +134,39 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
     def create(self, validated_data):
         cart = validated_data["cart"]
 
-        with django.db.transaction.atomic():
-            order = catalog.models.Order.objects.create(user=cart.user)
+        if catalog.models.Order.objects.filter(
+            user=cart.user,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+        ).exists():
+            raise rest_framework.serializers.ValidationError(
+                "У вас уже есть заказ в ожидании оплаты."
+            )
 
-            for cart_item in cart.items.all():
-                garment = cart_item.garment
+        order = catalog.models.Order.objects.create(user=cart.user)
 
-                garment.count -= cart_item.quantity
-                garment.save()
+        order_items = []
+        garments_to_update = []
 
-                catalog.models.OrderItem.objects.create(
+        for cart_item in cart.items.all():
+            garment = cart_item.garment
+
+            garment.count -= cart_item.quantity
+            garments_to_update.append(garment)
+
+            order_items.append(
+                catalog.models.OrderItem(
                     order=order,
                     product=cart_item.product,
                     garment=garment,
                     quantity=cart_item.quantity,
                     price=cart_item.product.price + garment.price,
                 )
+            )
 
-            cart.items.all().delete()
+        catalog.models.OrderItem.objects.bulk_create(order_items)
 
-            return order
+        catalog.models.Garment.objects.bulk_update(
+            garments_to_update, ["count"]
+        )
+
+        return order

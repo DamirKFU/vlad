@@ -143,6 +143,7 @@ class CartView(rest_framework.views.APIView):
 
         return rest_framework.response.Response(cart_items)
 
+    @django.db.transaction.atomic
     def delete(self, request, *args, **kwargs):
         item_id = request.data.get("item_id")
         if not item_id:
@@ -222,6 +223,7 @@ class UpdateCartItemView(rest_framework.views.APIView):
 class CreateOrderView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
+    @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
         serializer = catalog.serializers.CreateOrderSerializer(
             data=request.data, context={"request": request}

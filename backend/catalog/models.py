@@ -524,6 +524,15 @@ class Order(django.db.models.Model):
         verbose_name = "заказ"
         verbose_name_plural = "заказы"
         ordering = ["-created_at"]
+        constraints = [
+            django.db.models.UniqueConstraint(
+                fields=["user", "status"],
+                name="unique_user_waiting_payment",
+                condition=django.db.models.Q(
+                    status=OrderStatus.WAITING_PAYMENT
+                ),
+            )
+        ]
 
     def delete(self, *args, **kwargs):
         with django.db.transaction.atomic():
