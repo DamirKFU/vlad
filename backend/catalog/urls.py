@@ -44,4 +44,9 @@ urlpatterns = [
         catalog.views.UpdateCartItemView.as_view(),
         name="update-cart-item",
     ),
+    django.urls.path(
+        "order/create/",
+        catalog.views.CreateOrderView.as_view(),
+        name="create-order",
+    ),
 ]

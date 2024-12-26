@@ -99,3 +99,50 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
         data["product"] = product
         data["garment"] = garment
         return data
+
+
+class CreateOrderSerializer(rest_framework.serializers.Serializer):
+    def validate(self, data):
+        user = self.context["request"].user
+        cart = django.shortcuts.get_object_or_404(
+            catalog.models.Cart.objects.prefetch_related(
+                "items__product",
+                "items__garment",
+            ),
+            user=user,
+        )
+
+        for cart_item in cart.items.all():
+            garment = cart_item.garment
+            if garment.count < cart_item.quantity:
+                raise rest_framework.serializers.ValidationError(
+                    f"Недостаточно товара '{cart_item.product.name}' "
+                    f"размера {garment.size} цвета {garment.color.name}"
+                )
+
+        data["cart"] = cart
+        return data
+
+    def create(self, validated_data):
+        cart = validated_data["cart"]
+
+        with django.db.transaction.atomic():
+            order = catalog.models.Order.objects.create(user=cart.user)
+
+            for cart_item in cart.items.all():
+                garment = cart_item.garment
+
+                garment.count -= cart_item.quantity
+                garment.save()
+
+                catalog.models.OrderItem.objects.create(
+                    order=order,
+                    product=cart_item.product,
+                    garment=garment,
+                    quantity=cart_item.quantity,
+                    price=cart_item.product.price + garment.price,
+                )
+
+            cart.items.all().delete()
+
+            return order

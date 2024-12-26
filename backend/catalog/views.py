@@ -3,6 +3,7 @@ import django.shortcuts
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
+import rest_framework.status
 import rest_framework.views
 
 import catalog.models
@@ -80,27 +81,22 @@ class AddToCartView(rest_framework.views.APIView):
             cart, _ = catalog.models.Cart.objects.get_or_create(
                 user=request.user
             )
-            cart_item, _ = catalog.models.CartItem.objects.get_or_create(
+            cart_item, created = catalog.models.CartItem.objects.get_or_create(
                 product=product,
                 garment=garment,
-            )
-
-            cart_item_quantity, created = (
-                catalog.models.CartItemQuantity.objects.get_or_create(
-                    cart=cart, item=cart_item, defaults={"quantity": 1}
-                )
+                cart=cart,
             )
 
             if not created:
-                cart_item_quantity.quantity += 1
-                cart_item_quantity.save()
+                cart_item.quantity += 1
+                cart_item.save()
 
             return rest_framework.response.Response(
                 {
                     "message": "Товар успешно добавлен в корзину",
-                    "quantity": cart_item_quantity.quantity,
+                    "quantity": cart_item.quantity,
                     "total_price": (product.price + garment.price)
-                    * cart_item_quantity.quantity,
+                    * cart_item.quantity,
                 },
                 status=rest_framework.status.HTTP_201_CREATED,
             )
@@ -121,8 +117,7 @@ class CartView(rest_framework.views.APIView):
         )
 
         cart_items = []
-        for item_quantity in cart.cartitemquantity_set.all():
-            item = item_quantity.item
+        for item in cart.items.all():
             cart_items.append(
                 {
                     "id": item.id,
@@ -132,10 +127,10 @@ class CartView(rest_framework.views.APIView):
                     "category": item.garment.category.name,
                     "color": item.garment.color.color,
                     "size": item.garment.size,
-                    "quantity": item_quantity.quantity,
+                    "quantity": item.quantity,
+                    "available_quantity": item.garment.count,
                     "price": item.product.price + item.garment.price,
-                    "total_price": (item.product.price + item.garment.price)
-                    * item_quantity.quantity,
+                    "total_price": item.total_price,
                     "image": (
                         request.build_absolute_uri(
                             item.product.image.image.url
@@ -186,29 +181,22 @@ class UpdateCartItemView(rest_framework.views.APIView):
             )
 
         try:
-            cart_item_quantity = (
-                catalog.models.CartItemQuantity.objects.select_related(
-                    "item__product", "item__garment"
-                ).get(cart__user=request.user, item__id=item_id)
+            cart_item = catalog.models.CartItem.objects.get(
+                cart__user=request.user, id=item_id
             )
 
-            cart_item_quantity.quantity = int(quantity)
-            cart_item_quantity.save()
-
-            total_price = (
-                cart_item_quantity.item.product.price
-                + cart_item_quantity.item.garment.price
-            ) * cart_item_quantity.quantity
+            cart_item.quantity = int(quantity)
+            cart_item.save()
 
             return rest_framework.response.Response(
                 {
                     "message": "Количество товара успешно обновлено",
-                    "quantity": cart_item_quantity.quantity,
-                    "total_price": total_price,
+                    "quantity": cart_item.quantity,
+                    "total_price": cart_item.total_price,
                 }
             )
 
-        except catalog.models.CartItemQuantity.DoesNotExist:
+        except catalog.models.CartItem.DoesNotExist:
             return rest_framework.response.Response(
                 {"error": "Товар не найден в корзине"},
                 status=rest_framework.status.HTTP_404_NOT_FOUND,
@@ -216,18 +204,49 @@ class UpdateCartItemView(rest_framework.views.APIView):
 
     def delete(self, request, item_id, *args, **kwargs):
         try:
-            cart_item_quantity = catalog.models.CartItemQuantity.objects.get(
-                cart__user=request.user, item__id=item_id
+            cart_item = catalog.models.CartItem.objects.get(
+                cart__user=request.user, id=item_id
             )
-            cart_item = cart_item_quantity.item
-            cart_item_quantity.delete()
             cart_item.delete()
 
             return rest_framework.response.Response(
                 {"message": "Товар успешно удален из корзины"}
             )
-        except catalog.models.CartItemQuantity.DoesNotExist:
+        except catalog.models.CartItem.DoesNotExist:
             return rest_framework.response.Response(
                 {"error": "Товар не найден в корзине"},
                 status=rest_framework.status.HTTP_404_NOT_FOUND,
             )
+
+
+class CreateOrderView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = catalog.serializers.CreateOrderSerializer(
+            data=request.data, context={"request": request}
+        )
+
+        if serializer.is_valid():
+            order = serializer.save()
+            return rest_framework.response.Response(
+                {
+                    "success": True,
+                    "data": {"order_id": order.id, "status": order.status},
+                    "error": None,
+                },
+                status=rest_framework.status.HTTP_201_CREATED,
+            )
+
+        return rest_framework.response.Response(
+            {
+                "success": False,
+                "data": None,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Ошибка валидации",
+                    "fields": serializer.errors,
+                },
+            },
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )

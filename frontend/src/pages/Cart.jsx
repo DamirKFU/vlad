@@ -51,6 +51,20 @@ const Cart = () => {
         }
     };
 
+    const handleCheckout = async () => {
+        try {
+            const response = await api.post('catalog/order/create/');
+            if (response.data.success) {
+                // Очищаем корзину в UI
+                setCartItems([]);
+                alert('Заказ успешно создан!');
+            }
+        } catch (err) {
+            console.error('Ошибка при создании заказа:', err);
+            alert(err.response?.data?.error?.message || 'Ошибка при создании заказа');
+        }
+    };
+
     if (loading) return <p>Загрузка...</p>;
     if (error) return <p>{error}</p>;
 
@@ -106,9 +120,16 @@ const Cart = () => {
                                             <button 
                                                 className="quantity-btn"
                                                 onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                                                disabled={item.quantity >= item.available_quantity}
+                                                title={`На складе: ${item.available_quantity} шт.`}
                                             >
                                                 <span className="quantity-btn-icon">+</span>
                                             </button>
+                                            {item.quantity >= item.available_quantity && (
+                                                <span className="quantity-warning">
+                                                    На складе осталось: {item.available_quantity} шт.
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -117,7 +138,7 @@ const Cart = () => {
                     </div>
                     <div className="cart-summary">
                         <h2>Итого к оплате: {totalSum} ₽</h2>
-                        <button className="checkout-button">Оформить заказ</button>
+                        <button className="checkout-button" onClick={handleCheckout}>Оформить заказ</button>
                     </div>
                 </>
             )}
