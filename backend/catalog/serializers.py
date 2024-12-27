@@ -104,6 +104,9 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
 
 class CreateOrderSerializer(rest_framework.serializers.Serializer):
     address = rest_framework.serializers.CharField(required=True)
+    phone = rest_framework.serializers.CharField(
+        required=True, validators=[catalog.validators.validate_russian_phone]
+    )
 
     def validate(self, data):
         user = self.context["request"].user
@@ -136,6 +139,7 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
     def create(self, validated_data):
         cart = validated_data["cart"]
         address = validated_data["address"]
+        phone = validated_data["phone"]
 
         if catalog.models.Order.objects.filter(
             user=cart.user,
@@ -146,7 +150,7 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
             )
 
         order = catalog.models.Order.objects.create(
-            user=cart.user, address=address
+            user=cart.user, address=address, phone=phone
         )
 
         order_items = []

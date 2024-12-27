@@ -22,3 +22,14 @@ def validate_file_size(file):
         )
 
     return file
+
+
+def validate_russian_phone(value: str):
+    pattern = re.compile(
+        r"^(\+7|7|8)?[\s\-]?\(?[489][0-9]{2}\)"
+        r"?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$"
+    )
+    if not pattern.match(value):
+        raise serializers.ValidationError(
+            "Неверный формат номера телефона (РФ)."
+        )

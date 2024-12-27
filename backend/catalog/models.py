@@ -523,6 +523,15 @@ class Order(django.db.models.Model):
         auto_now=True,
         help_text="дата обновления заказа",
     )
+    phone = django.db.models.CharField(
+        "номер телефона",
+        max_length=15,
+        help_text="номер телефона пользователя",
+        validators=[
+            catalog.validators.validate_russian_phone,
+        ],
+    )
+    phone = django.db.models.CharField(max_length=16, null=True, blank=True)
 
     class Meta:
         verbose_name = "заказ"

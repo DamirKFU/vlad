@@ -194,4 +194,38 @@
   color: #e74c3c;
   margin-top: 10px;
   font-size: 14px;
-} 
+}
+
+.phone-input-container {
+  margin-bottom: 15px;
+}
+
+.phone-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.phone-input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.phone-input.error {
+  border-color: #e74c3c;
+}
+
+.phone-error {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.phone-info {
+  font-size: 14px;
+  color: #666;
+  margin-top: 10px;
+}

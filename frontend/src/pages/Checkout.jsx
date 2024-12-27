@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { validateRussianPhone, formatPhoneNumber } from '../utils/validators';
 import '../styles/Checkout.css';
 
 const Checkout = () => {
@@ -9,6 +10,25 @@ const Checkout = () => {
   const { cartItems = [], totalSum = 0 } = location.state || {};
   const [address, setAddress] = useState('');
   const [addressError, setAddressError] = useState('');
+  const [phone, setPhone] = useState('+7');
+  const [phoneError, setPhoneError] = useState('');
+
+  const handlePhoneChange = (e) => {
+    const value = e.target.value;
+    
+    if (value.length < 2) {
+      return;
+    }
+
+    const formattedPhone = formatPhoneNumber(value);
+    setPhone(formattedPhone);
+    
+    if (formattedPhone.length === 18 && !validateRussianPhone(formattedPhone)) {
+      setPhoneError('Неверный формат номера телефона');
+    } else {
+      setPhoneError('');
+    }
+  };
 
   const handleConfirmOrder = async () => {
     if (!address.trim()) {
@@ -16,9 +36,20 @@ const Checkout = () => {
       return;
     }
 
+    if (phone.length < 18) {
+      setPhoneError('Пожалуйста, введите полный номер телефона');
+      return;
+    }
+
+    if (!validateRussianPhone(phone)) {
+      setPhoneError('Неверный формат номера телефона');
+      return;
+    }
+
     try {
       const response = await api.post('catalog/order/create/', {
-        address: address.trim()
+        address: address.trim(),
+        phone: phone.trim()
       });
       
       if (response.data.success) {
@@ -76,6 +107,28 @@ const Checkout = () => {
         </div>
         <p className="delivery-info">
           Доставка осуществляется только в пределах города
+        </p>
+      </div>
+
+      <div className="delivery-section">
+        <h2>Телефон</h2>
+        <div className="phone-input-container">
+          <input
+            type="tel"
+            className={`phone-input ${phoneError ? 'error' : ''}`}
+            placeholder="+7 (999) 123-45-67"
+            value={phone}
+            onChange={handlePhoneChange}
+          />
+          {phoneError && (
+            <div className="phone-error">
+              {phoneError}
+            </div>
+          )}
+        </div>
+        
+        <p className="phone-info">
+          Введите номер в формате: +7 (999) 123-45-67
         </p>
       </div>
 
