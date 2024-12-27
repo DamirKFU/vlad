@@ -270,69 +270,25 @@ class CreateOrderView(rest_framework.views.APIView):
 
 class OrderHistoryView(rest_framework.generics.ListAPIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
+    pagination_class = catalog.pagination.OrderPagination
+    serializer_class = catalog.serializers.OrderSerializer
 
     def get_queryset(self):
-        return (
-            catalog.models.Order.objects.filter(user=self.request.user)
-            .select_related("user")
-            .prefetch_related(
-                "items",
-                django.db.models.Prefetch(
-                    "items__product",
-                    queryset=catalog.models.Product.objects.select_related(
-                        "image"
-                    ),
-                ),
-                django.db.models.Prefetch(
-                    "items__garment",
-                    queryset=catalog.models.Garment.objects.select_related(
-                        "category", "color"
-                    ),
-                ),
-            )
+        return catalog.models.Order.objects.get_orders_with_items(
+            user=self.request.user
         )
 
     def get(self, request, *args, **kwargs):
-        orders = self.get_queryset()
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(
+            page, many=True, context={"request": request}
+        )
 
-        orders_data = []
-        for order in orders:
-            order_items = []
-            for item in order.items.all():
-                order_items.append(
-                    {
-                        "id": item.id,
-                        "product_id": item.product.id,
-                        "garment_id": item.garment.id,
-                        "name": item.product.name,
-                        "category": item.garment.category.name,
-                        "color": item.garment.color.color,
-                        "size": item.garment.size,
-                        "quantity": item.quantity,
-                        "price": item.product.price + item.garment.price,
-                        "total_price": item.total_price,
-                        "image": (
-                            request.build_absolute_uri(
-                                item.product.image.image.url
-                            )
-                            if hasattr(item.product, "image")
-                            else None
-                        ),
-                    }
-                )
-
-            orders_data.append(
-                {
-                    "id": order.id,
-                    "created_at": order.created_at,
-                    "status": order.status,
-                    "status_display": order.get_status_display(),
-                    "address": order.address,
-                    "items": order_items,
-                }
-            )
-
-        return rest_framework.response.Response(orders_data)
+        return core.utils.success_response(
+            data=self.get_paginated_response(serializer.data).data,
+            message="Заказы успешно получены",
+        )
 
 
 class CancelOrderView(rest_framework.views.APIView):

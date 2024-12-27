@@ -190,3 +190,53 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
         )
 
         return order
+
+
+class OrderItemSerializer(rest_framework.serializers.ModelSerializer):
+    name = rest_framework.serializers.CharField(source="product.name")
+    category = rest_framework.serializers.CharField(
+        source="garment.category.name"
+    )
+    color = rest_framework.serializers.CharField(source="garment.color.color")
+    size = rest_framework.serializers.CharField(source="garment.size")
+    image = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = catalog.models.OrderItem
+        fields = [
+            "name",
+            "category",
+            "color",
+            "size",
+            "quantity",
+            "price",
+            "total_price",
+            "image",
+        ]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if obj.matching_image:
+            image = catalog.models.ProductAdditionalImage(
+                image=obj.matching_image
+            )
+            return request.build_absolute_uri(image.get_image_330x440().url)
+
+        return None
+
+
+class OrderSerializer(rest_framework.serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    status_display = rest_framework.serializers.CharField(
+        source="get_status_display"
+    )
+
+    class Meta:
+        model = catalog.models.Order
+        fields = [
+            "id",
+            "status",
+            "status_display",
+            "address",
+            "items",
+        ]

@@ -494,7 +494,51 @@ class OrderStatus(django.db.models.TextChoices):
     CANCELED = "CN", "Отменён"
 
 
+class OrderManager(django.db.models.Manager):
+    def get_orders_with_items(self, user):
+        image_subquery = (
+            ProductAdditionalImage.objects.filter(
+                product_id=django.db.models.OuterRef("product_id"),
+                category_id=django.db.models.OuterRef("garment__category_id"),
+                color_id=django.db.models.OuterRef("garment__color_id"),
+            )
+            .order_by("id")
+            .values("image")[:1]
+        )
+
+        return (
+            self.filter(user=user)
+            .select_related("user")
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.select_related(
+                        "product",
+                        "garment__category",
+                        "garment__color",
+                    )
+                    .annotate(
+                        matching_image=django.db.models.Subquery(
+                            image_subquery
+                        )
+                    )
+                    .only(
+                        "order__id",
+                        "garment__category__name",
+                        "garment__color__color",
+                        "garment__size",
+                        "product__name",
+                        "quantity",
+                        "price",
+                    ),
+                ),
+            )
+        )
+
+
 class Order(django.db.models.Model):
+    objects = OrderManager()
+
     user = django.db.models.ForeignKey(
         users.models.User,
         verbose_name="пользователь",
