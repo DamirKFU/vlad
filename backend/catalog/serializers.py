@@ -103,6 +103,8 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
 
 
 class CreateOrderSerializer(rest_framework.serializers.Serializer):
+    address = rest_framework.serializers.CharField(required=True)
+
     def validate(self, data):
         user = self.context["request"].user
         cart = django.shortcuts.get_object_or_404(
@@ -133,6 +135,7 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
 
     def create(self, validated_data):
         cart = validated_data["cart"]
+        address = validated_data["address"]
 
         if catalog.models.Order.objects.filter(
             user=cart.user,
@@ -142,7 +145,9 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
                 "У вас уже есть заказ в ожидании оплаты."
             )
 
-        order = catalog.models.Order.objects.create(user=cart.user)
+        order = catalog.models.Order.objects.create(
+            user=cart.user, address=address
+        )
 
         order_items = []
         garments_to_update = []
@@ -164,9 +169,9 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
             )
 
         catalog.models.OrderItem.objects.bulk_create(order_items)
-
         catalog.models.Garment.objects.bulk_update(
-            garments_to_update, ["count"]
+            garments_to_update,
+            ["count"],
         )
 
         return order

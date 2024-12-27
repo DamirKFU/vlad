@@ -13,6 +13,8 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import Cookies from 'js-cookie';
 import api from "./api";
 import Cart from './pages/Cart';
+import OrderHistory from './pages/OrderHistory';
+import Checkout from './pages/Checkout';
 
 
 function Logout() {
@@ -48,6 +50,8 @@ function App() {
           <Route path="/catalog" element={<Catalog />}/>
           <Route path="/product/:productId" element={<ProductDetail />}/>
           <Route path="/cart" element={<Cart />} />
+          <Route path="/orders" element={<OrderHistory />} />
+          <Route path="/checkout" element={<Checkout />} />
         </Routes>
       </BrowserRouter>
   )

@@ -9,14 +9,17 @@ const Catalog = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get('catalog/products/');
-        console.log('Products data:', response.data);
-        
-        setProducts(response.data);
+        const response = await api.get(`catalog/products/?page=${page}`);
+        setProducts(prev => [...prev, ...response.data.results]);
+        setTotalCount(response.data.count);
+        setHasMore(!!response.data.next);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -26,7 +29,13 @@ const Catalog = () => {
     };
 
     fetchData();
-  }, []);
+  }, [page]);
+
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      setPage(prev => prev + 1);
+    }
+  };
 
   if (loading) {
     return <Preloader message="Загрузка каталога..." />;
@@ -56,6 +65,9 @@ const Catalog = () => {
           Наши футболки различаются по плотности, от 140 г до 300 г. Представлены в различных вариантах кроя: свободный, стандартный, свободный реглан.
           Также в своем экспериментальном красильном цехе мы создаем лимитированные партии футболок.
         </p>
+        <div className="catalog-count">
+          Всего товаров: {totalCount}
+        </div>
       </div>
 
       <div className="catalog-filters">
@@ -64,7 +76,7 @@ const Catalog = () => {
         <button className="filter-btn">Плотные</button>
         <button className="filter-btn">Премиум</button>
         <button className="filter-btn">С экстастаном</button>
-        <button className="filter-btn">Кр��шеные</button>
+        <button className="filter-btn">Кршеные</button>
         <button className="filter-btn">Поло</button>
       </div>
 
@@ -97,6 +109,18 @@ const Catalog = () => {
           </div>
         ))}
       </div>
+
+      {hasMore && (
+        <div className="load-more">
+          <button 
+            onClick={loadMore} 
+            className="load-more-btn"
+            disabled={loading}
+          >
+            {loading ? 'Загрузка...' : 'Загрузить еще'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

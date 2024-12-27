@@ -49,4 +49,14 @@ urlpatterns = [
         catalog.views.CreateOrderView.as_view(),
         name="create-order",
     ),
+    django.urls.path(
+        "orders/history/",
+        catalog.views.OrderHistoryView.as_view(),
+        name="order-history",
+    ),
+    django.urls.path(
+        "order/<int:order_id>/cancel/",
+        catalog.views.CancelOrderView.as_view(),
+        name="cancel-order",
+    ),
 ]

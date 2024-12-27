@@ -487,20 +487,24 @@ class CartItem(django.db.models.Model):
 
 
 class OrderStatus(django.db.models.TextChoices):
-    WAITING_PAYMENT = "WP", "Ожидание оплаты"
-    IN_PRODUCTION = "IP", "В производстве"
+    WAITING_PAYMENT = "WP", "Ожидает оплаты"
+    PAID = "PD", "Оплачен"
     IN_DELIVERY = "ID", "В доставке"
     DELIVERED = "DV", "Доставлен"
+    CANCELED = "CN", "Отменён"
 
 
 class Order(django.db.models.Model):
     user = django.db.models.ForeignKey(
         users.models.User,
         verbose_name="пользователь",
-        help_text="пользователь заказа",
         on_delete=django.db.models.CASCADE,
         related_name="orders",
-        related_query_name="orders",
+    )
+    address = django.db.models.CharField(
+        "адрес доставки",
+        max_length=255,
+        help_text="адрес доставки заказа",
     )
     status = django.db.models.CharField(
         "статус заказа",
@@ -534,13 +538,17 @@ class Order(django.db.models.Model):
             )
         ]
 
-    def delete(self, *args, **kwargs):
-        with django.db.transaction.atomic():
+    def cancel_order(self):
+        if self.status == OrderStatus.WAITING_PAYMENT:
             for order_item in self.items.select_related("garment").all():
                 order_item.garment.count += order_item.quantity
                 order_item.garment.save()
 
-            super().delete(*args, **kwargs)
+            self.status = OrderStatus.CANCELED
+            self.save()
+
+    def delete(self, *args, **kwargs):
+        raise Exception("Orders cannot be deleted, use cancel_order() instead")
 
     def __str__(self):
         return f"Заказ №{self.id}"

@@ -1,12 +1,15 @@
 import django.db
 import django.shortcuts
+import rest_framework.decorators
 import rest_framework.generics
+import rest_framework.pagination
 import rest_framework.permissions
 import rest_framework.response
 import rest_framework.status
 import rest_framework.views
 
 import catalog.models
+import catalog.pagination
 import catalog.serializers
 import catalog.utils
 
@@ -45,7 +48,8 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
 class ProductListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     serializer_class = catalog.serializers.ProductSerializer
-    queryset = catalog.models.Product.objects
+    queryset = catalog.models.Product.objects.all()
+    pagination_class = catalog.pagination.ProductPagination
 
 
 class ProductDetailView(rest_framework.views.APIView):
@@ -252,3 +256,94 @@ class CreateOrderView(rest_framework.views.APIView):
             },
             status=rest_framework.status.HTTP_400_BAD_REQUEST,
         )
+
+
+class OrderHistoryView(rest_framework.generics.ListAPIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            catalog.models.Order.objects.filter(user=self.request.user)
+            .select_related("user")
+            .prefetch_related(
+                "items",
+                django.db.models.Prefetch(
+                    "items__product",
+                    queryset=catalog.models.Product.objects.select_related(
+                        "image"
+                    ),
+                ),
+                django.db.models.Prefetch(
+                    "items__garment",
+                    queryset=catalog.models.Garment.objects.select_related(
+                        "category", "color"
+                    ),
+                ),
+            )
+        )
+
+    def get(self, request, *args, **kwargs):
+        orders = self.get_queryset()
+
+        orders_data = []
+        for order in orders:
+            order_items = []
+            for item in order.items.all():
+                order_items.append(
+                    {
+                        "id": item.id,
+                        "product_id": item.product.id,
+                        "garment_id": item.garment.id,
+                        "name": item.product.name,
+                        "category": item.garment.category.name,
+                        "color": item.garment.color.color,
+                        "size": item.garment.size,
+                        "quantity": item.quantity,
+                        "price": item.product.price + item.garment.price,
+                        "total_price": item.total_price,
+                        "image": (
+                            request.build_absolute_uri(
+                                item.product.image.image.url
+                            )
+                            if hasattr(item.product, "image")
+                            else None
+                        ),
+                    }
+                )
+
+            orders_data.append(
+                {
+                    "id": order.id,
+                    "created_at": order.created_at,
+                    "status": order.status,
+                    "status_display": order.get_status_display(),
+                    "address": order.address,
+                    "items": order_items,
+                }
+            )
+
+        return rest_framework.response.Response(orders_data)
+
+
+class CancelOrderView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    @django.db.transaction.atomic
+    def post(self, request, order_id, *args, **kwargs):
+        try:
+            order = catalog.models.Order.objects.get(
+                user=request.user,
+                id=order_id,
+                status=catalog.models.OrderStatus.WAITING_PAYMENT,
+            )
+            order.cancel_order()
+
+            return rest_framework.response.Response(
+                {"message": "Заказ успешно отменен"},
+                status=rest_framework.status.HTTP_200_OK,
+            )
+        except catalog.models.Order.DoesNotExist:
+            return rest_framework.response.Response(
+                {"error": "Заказ не найден или не может быть отменен"},
+                status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )

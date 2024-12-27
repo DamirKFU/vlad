@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import '../styles/Cart.css';
+import { useNavigate } from 'react-router-dom';
 
 const Cart = () => {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchCart();
@@ -51,18 +53,11 @@ const Cart = () => {
         }
     };
 
-    const handleCheckout = async () => {
-        try {
-            const response = await api.post('catalog/order/create/');
-            if (response.data.success) {
-                // Очищаем корзину в UI
-                setCartItems([]);
-                alert('Заказ успешно создан!');
-            }
-        } catch (err) {
-            console.error('Ошибка при создании заказа:', err);
-            alert(err.response?.data?.error?.message || 'Ошибка при создании заказа');
-        }
+    const handleCheckout = () => {
+        const totalSum = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+        navigate('/checkout', { 
+            state: { cartItems, totalSum } 
+        });
     };
 
     if (loading) return <p>Загрузка...</p>;
@@ -127,7 +122,7 @@ const Cart = () => {
                                             </button>
                                             {item.quantity >= item.available_quantity && (
                                                 <span className="quantity-warning">
-                                                    На складе осталось: {item.available_quantity} шт.
+                                                    На складе остал��сь: {item.available_quantity} шт.
                                                 </span>
                                             )}
                                         </div>
@@ -138,7 +133,12 @@ const Cart = () => {
                     </div>
                     <div className="cart-summary">
                         <h2>Итого к оплате: {totalSum} ₽</h2>
-                        <button className="checkout-button" onClick={handleCheckout}>Оформить заказ</button>
+                        <button 
+                            className="checkout-button" 
+                            onClick={handleCheckout}
+                        >
+                            Оформить заказ
+                        </button>
                     </div>
                 </>
             )}
