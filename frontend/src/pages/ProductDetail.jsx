@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import '../styles/ProductDetail.css';
+import ErrorMessage from '../components/common/ErrorMessage';
 
 const ProductDetail = () => {
   const { productId } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
@@ -16,34 +18,34 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       try {
         const response = await api.get(`catalog/product/${productId}/`);
-        const data = response.data;
-        setProduct(data);
-        
-        // Проверяем наличие данных перед установкой значений по умолчанию
-        if (data.garments && Object.keys(data.garments).length > 0) {
-          const firstCategory = Object.keys(data.garments)[0];
-          setSelectedCategory(firstCategory);
-          
-          if (data.garments[firstCategory] && Object.keys(data.garments[firstCategory]).length > 0) {
-            const firstSize = Object.keys(data.garments[firstCategory])[0];
-            setSelectedSize(firstSize);
-            
-            if (data.garments[firstCategory][firstSize] && 
-                Object.keys(data.garments[firstCategory][firstSize]).length > 0) {
-              const firstColor = Object.keys(data.garments[firstCategory][firstSize])[0];
-              setSelectedColor(firstColor);
+        if (response.data.data) {
+          setProduct(response.data.data);
+          // Логика инициализации первой категории, размера, цвета
+          if (response.data.data.garments && Object.keys(response.data.data.garments).length > 0) {
+            const firstCategory = Object.keys(response.data.data.garments)[0];
+            setSelectedCategory(firstCategory);
+
+            if (response.data.data.garments[firstCategory] &&
+                Object.keys(response.data.data.garments[firstCategory]).length > 0) {
+              const firstSize = Object.keys(response.data.data.garments[firstCategory])[0];
+              setSelectedSize(firstSize);
+
+              if (response.data.data.garments[firstCategory][firstSize] &&
+                  Object.keys(response.data.data.garments[firstCategory][firstSize]).length > 0) {
+                const firstColor = Object.keys(response.data.data.garments[firstCategory][firstSize])[0];
+                setSelectedColor(firstColor);
+              }
             }
           }
         }
-        
         setLoading(false);
       } catch (err) {
-        setError('Ошибка при загрузке данных о товаре');
+        setError(err.response?.data?.message || 'Произошла ошибка при загрузке данных');
         setLoading(false);
       }
     };
     fetchProduct();
-  }, [productId]);
+  }, [productId, navigate]);
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
@@ -71,47 +73,45 @@ const ProductDetail = () => {
         id_garment: selectedGarment
       });
       alert('Товар успешно добавлен в корзину');
-    } catch (error) {
-      console.error('Ошибка при добавлении в корзину:', error);
+    } catch (err) {
+      console.error('Ошибка при добавлении в корзину:', err);
       alert('Ошибка при добавлении товара в корзину');
     }
   };
 
-  if (loading) return <p>Загрузка...</p>;
-  if (error) return <p>{error}</p>;
-  if (!product) return null;
+  if (loading) {
+    return <p>Загрузка...</p>;
+  }
 
-  const hasImages = selectedCategory && 
-                   selectedColor && 
-                   product.images && 
-                   product.images[selectedCategory] && 
-                   product.images[selectedCategory][selectedColor] && 
+  if (error) {
+    return <ErrorMessage 
+      message={error} 
+      onRetry={() => window.location.reload()} 
+    />;
+  }
+
+  const hasImages = selectedCategory &&
+                   selectedColor &&
+                   product.images &&
+                   product.images[selectedCategory] &&
+                   product.images[selectedCategory][selectedColor] &&
                    product.images[selectedCategory][selectedColor].length > 0;
 
   return (
     <div className={`product-detail ${!hasImages ? 'no-images' : ''}`}>
       {hasImages && (
         <div className="product-images">
-          {selectedCategory && 
-           selectedColor && 
-           product.images && 
-           product.images[selectedCategory] && 
-           product.images[selectedCategory][selectedColor] && 
-           product.images[selectedCategory][selectedColor].length > 0 ? (
-            <>
-              {product.images[selectedCategory][selectedColor].map((imageUrl, index) => (
-                <div key={index} className="product-image">
-                  <img 
-                    src={imageUrl} 
-                    alt={`${product.name} - ${selectedCategory} ${selectedColor} ${index + 1}`} 
-                  />
-                </div>
-              ))}
-            </>
-          ) : null}
+          {product.images[selectedCategory][selectedColor].map((imageUrl, idx) => (
+            <div key={idx} className="product-image">
+              <img 
+                src={imageUrl}
+                alt={`${product.name} - ${selectedCategory} ${selectedColor} ${idx + 1}`}
+              />
+            </div>
+          ))}
         </div>
       )}
-      
+
       <div className="product-info">
         <h2>{product.name}</h2>
         <p className="price">Цена: {product.price} ₽</p>

@@ -12,6 +12,7 @@ import catalog.models
 import catalog.pagination
 import catalog.serializers
 import catalog.utils
+import core.utils
 
 
 class GarmentListView(rest_framework.views.APIView):
@@ -51,14 +52,23 @@ class ProductListView(rest_framework.generics.ListAPIView):
     queryset = catalog.models.Product.objects.all()
     pagination_class = catalog.pagination.ProductPagination
 
+    def get(self, request, *args, **kwargs):
+        responce = super().get(request, *args, **kwargs)
+        return core.utils.success_response(
+            data=responce.data, message="Продукты успешно получены"
+        )
+
 
 class ProductDetailView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
 
     def get(self, request, product_id, *args, **kwargs):
-        product = django.shortcuts.get_object_or_404(
-            catalog.models.Product.objects, id=product_id
-        )
+        product = catalog.models.Product.objects.filter(id=product_id).first()
+        if not product:
+            return core.utils.error_response(
+                message="Продукт не найден",
+                http_status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )
 
         garments_data = product.garments.items_by_product_detail(product)
         result = {
@@ -70,44 +80,44 @@ class ProductDetailView(rest_framework.views.APIView):
                 product, garments_data, request
             ),
         }
-        return rest_framework.response.Response(result)
+        return core.utils.success_response(
+            data=result, message="Продукт успешно получен"
+        )
 
 
 class AddToCartView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
+    @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
         serializer = catalog.serializers.AddToCartSerializer(data=request.data)
-        if serializer.is_valid():
-            product = serializer.validated_data["product"]
-            garment = serializer.validated_data["garment"]
-
-            cart, _ = catalog.models.Cart.objects.get_or_create(
-                user=request.user
-            )
-            cart_item, created = catalog.models.CartItem.objects.get_or_create(
-                product=product,
-                garment=garment,
-                cart=cart,
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
             )
 
-            if not created:
-                cart_item.quantity += 1
-                cart_item.save()
+        product = serializer.validated_data["product"]
+        garment = serializer.validated_data["garment"]
 
-            return rest_framework.response.Response(
-                {
-                    "message": "Товар успешно добавлен в корзину",
-                    "quantity": cart_item.quantity,
-                    "total_price": (product.price + garment.price)
-                    * cart_item.quantity,
-                },
-                status=rest_framework.status.HTTP_201_CREATED,
-            )
+        cart, _ = catalog.models.Cart.objects.get_or_create(user=request.user)
+        cart_item, created = catalog.models.CartItem.objects.get_or_create(
+            product=product,
+            garment=garment,
+            cart=cart,
+        )
 
-        return rest_framework.response.Response(
-            serializer.errors,
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        if not created:
+            cart_item.quantity += 1
+            cart_item.save()
+
+        return core.utils.success_response(
+            data={
+                "quantity": cart_item.quantity,
+                "total_price": (product.price + garment.price)
+                * cart_item.quantity,
+            },
+            message="Товар успешно добавлен в корзину",
+            http_status=rest_framework.status.HTTP_201_CREATED,
         )
 
 

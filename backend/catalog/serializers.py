@@ -79,14 +79,25 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
     id_garment = rest_framework.serializers.IntegerField()
 
     def validate(self, data):
-        product = django.shortcuts.get_object_or_404(
-            catalog.models.Product.objects.only("id"),
-            id=data["id_product"],
+        errors = {}
+        product = (
+            catalog.models.Product.objects.only("id")
+            .filter(id=data["id_product"])
+            .first()
         )
-        garment = django.shortcuts.get_object_or_404(
-            catalog.models.Garment.objects.only("id"),
-            id=data["id_garment"],
+        if not product:
+            errors["id_product"] = "Продукт не найден"
+
+        garment = (
+            catalog.models.Garment.objects.only("id")
+            .filter(id=data["id_garment"])
+            .first()
         )
+        if not garment:
+            errors["id_garment"] = "Одежда не найдена"
+
+        if errors:
+            raise rest_framework.serializers.ValidationError(errors)
 
         if (
             not product.garments.values_list("id", flat=True)
@@ -94,7 +105,7 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
             .exists()
         ):
             raise rest_framework.serializers.ValidationError(
-                "Данная одежда не принадлежит этому товару"
+                {"form_error": "Данная одежда не принадлежит этому товару"}
             )
 
         data["product"] = product
