@@ -99,8 +99,7 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
     def validate(self, data):
         errors = {}
         product = (
-            catalog.models.Product.objects
-            .filter(id=data["id_product"])
+            catalog.models.Product.objects.filter(id=data["id_product"])
             .only(
                 "name",
                 "price",
@@ -111,8 +110,7 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
             errors["id_product"] = "Продукт не найден"
 
         garment = (
-            catalog.models.Garment.objects
-            .filter(id=data["id_garment"])
+            catalog.models.Garment.objects.filter(id=data["id_garment"])
             .only(
                 "price",
             )
@@ -156,7 +154,8 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
 
         return {
             "quantity": cart_item.quantity,
-            "total_price": (product.price + garment.price) * cart_item.quantity,
+            "total_price": (product.price + garment.price)
+            * cart_item.quantity,
         }
 
 
