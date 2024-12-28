@@ -99,16 +99,23 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
     def validate(self, data):
         errors = {}
         product = (
-            catalog.models.Product.objects.only("id")
+            catalog.models.Product.objects
             .filter(id=data["id_product"])
+            .only(
+                "name",
+                "price",
+            )
             .first()
         )
         if not product:
             errors["id_product"] = "Продукт не найден"
 
         garment = (
-            catalog.models.Garment.objects.only("id")
+            catalog.models.Garment.objects
             .filter(id=data["id_garment"])
+            .only(
+                "price",
+            )
             .first()
         )
         if not garment:
@@ -149,8 +156,7 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
 
         return {
             "quantity": cart_item.quantity,
-            "total_price": (cart_item.product.price + cart_item.garment.price)
-            * cart_item.quantity,
+            "total_price": (product.price + garment.price) * cart_item.quantity,
         }
 
 
@@ -356,10 +362,23 @@ class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
     )
 
     def validate(self, data):
-        cart_item = catalog.models.CartItem.objects.filter(
-            cart__user=self.context["request"].user,
-            id=data["item_id"],
-        ).first()
+        cart_item = (
+            catalog.models.CartItem.objects.select_related(
+                "garment",
+                "product",
+            )
+            .filter(
+                cart__user=self.context["request"].user,
+                id=data["item_id"],
+            )
+            .only(
+                "quantity",
+                "garment__count",
+                "garment__price",
+                "product__price",
+            )
+            .first()
+        )
 
         if not cart_item:
             raise rest_framework.serializers.ValidationError(
@@ -375,10 +394,15 @@ class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
         return data
 
     def update(self, instance, validated_data):
-        instance.quantity = validated_data["quantity"]
-        instance.save()
+        quantity = validated_data["quantity"]
+        catalog.models.CartItem.objects.filter(id=instance.id).update(
+            quantity=quantity
+        )
+
+        instance.quantity = quantity
+
         return {
-            "quantity": instance.quantity,
+            "quantity": quantity,
             "total_price": instance.total_price,
         }
 

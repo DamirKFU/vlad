@@ -89,8 +89,9 @@ class ProductDetailView(rest_framework.views.APIView):
         )
 
 
-class AddToCartView(rest_framework.views.APIView):
+class AddToCartView(rest_framework.generics.GenericAPIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
+    serializer_class = catalog.serializers.AddToCartSerializer
 
     @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
@@ -136,6 +137,7 @@ class CartView(rest_framework.views.APIView):
 class UpdateCartItemView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
+    @django.db.transaction.atomic
     def patch(self, request, *args, **kwargs):
         serializer = catalog.serializers.UpdateCartItemSerializer(
             data=request.data,
