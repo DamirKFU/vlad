@@ -724,3 +724,315 @@ class CreateOrderViewTest(django.test.TestCase):
             "Корзина пуста",
             "Неверное сообщение об ошибке",
         )
+
+
+class CartViewTest(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Тестовая категория"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Зеленый", color="#008000"
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Тестовый продукт", price=100
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            price=50,
+            count=10,
+        )
+        cls.product.garments.add(cls.garment)
+
+    def setUp(self):
+        self.guest_client = rest_framework.test.APIClient()
+        self.authorized_client = rest_framework.test.APIClient()
+        self.authorized_client.force_authenticate(user=self.user)
+
+        self.cart = catalog.models.Cart.objects.create(user=self.user)
+        self.cart_item = catalog.models.CartItem.objects.create(
+            cart=self.cart,
+            product=self.product,
+            garment=self.garment,
+            quantity=2,
+        )
+
+    def test_unauthorized_get_cart(self):
+        response = self.guest_client.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.FORBIDDEN,
+            "Неавторизованный пользователь может получить корзину",
+        )
+
+    def test_get_cart_success(self):
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.OK,
+            "Неверный код ответа при получении корзины",
+        )
+        self.assertEqual(
+            response.data["message"],
+            "Корзина успешно получена",
+            "Неверное сообщение об успешном получении",
+        )
+
+        cart_data = response.data["data"][0]
+        expected_fields = {
+            "id",
+            "name",
+            "category",
+            "color",
+            "size",
+            "quantity",
+            "available_quantity",
+            "price",
+            "total_price",
+            "image",
+        }
+        self.assertEqual(
+            set(cart_data.keys()),
+            expected_fields,
+            "Неверный набор полей в ответе",
+        )
+        self.assertEqual(
+            cart_data["name"], self.product.name, "Неверное имя продукта"
+        )
+        self.assertEqual(
+            cart_data["category"], self.category.name, "Неверная категория"
+        )
+        self.assertEqual(cart_data["color"], self.color.color, "Неверный цвет")
+        self.assertEqual(
+            cart_data["size"], self.garment.size, "Неверный размер"
+        )
+        self.assertEqual(
+            cart_data["quantity"],
+            self.cart_item.quantity,
+            "Неверное количество",
+        )
+        self.assertEqual(
+            cart_data["available_quantity"],
+            self.garment.count,
+            "Неверное доступное количество",
+        )
+        self.assertEqual(
+            cart_data["price"],
+            self.product.price + self.garment.price,
+            "Неверная цена",
+        )
+        self.assertEqual(
+            cart_data["total_price"],
+            (self.product.price + self.garment.price)
+            * self.cart_item.quantity,
+            "Неверная общая стоимость",
+        )
+
+    def test_get_empty_cart(self):
+        self.cart_item.delete()
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.OK,
+            "Неверный код ответа при пустой корзине",
+        )
+        self.assertEqual(
+            len(response.data["data"]),
+            0,
+            "Пустая корзина должна возвращать пустой список",
+        )
+
+    def test_cart_not_found(self):
+        self.cart.delete()
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Отсутствующая корзина должна возвращать 400",
+        )
+
+    def test_update_cart_item_quantity_validation(self):
+        test_cases = [
+            ("", "Некорректное количество"),
+            ("0", "Некорректное количество"),
+            ("-1", "Некорректное количество"),
+            ("abc", "Некорректное количество"),
+        ]
+
+        for quantity, expected_error in test_cases:
+            with self.subTest(quantity=quantity):
+                response = self.authorized_client.patch(
+                    django.urls.reverse("api:catalog:update-cart-item"),
+                    {
+                        "item_id": self.cart_item.id,
+                        "quantity": quantity,
+                    },
+                )
+                self.assertEqual(
+                    response.status_code,
+                    http.HTTPStatus.BAD_REQUEST,
+                    "Неверный код ответа при невалидном количестве",
+                )
+                self.assertEqual(
+                    response.data["errors"]["fields"]["quantity"],
+                    expected_error,
+                    "Неверное сообщение об ошибке",
+                )
+
+    def test_update_nonexistent_cart_item(self):
+        response = self.authorized_client.patch(
+            django.urls.reverse("api:catalog:update-cart-item"),
+            {
+                "item_id": 99999,
+                "quantity": 2,
+            },
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при обновлении несуществующего товара",
+        )
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "Товар не найден в корзине",
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_delete_nonexistent_cart_item(self):
+        response = self.authorized_client.delete(
+            django.urls.reverse("api:catalog:update-cart-item"),
+            {"item_id": 99999},
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при удалении несуществующего товара",
+        )
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "Товар не найден в корзине",
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_delete_cart_item_validation(self):
+        response = self.authorized_client.delete(
+            django.urls.reverse("api:catalog:update-cart-item"),
+            {},
+            content_type="application/json",
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при отсутствии item_id",
+        )
+        self.assertEqual(
+            response.data["errors"]["fields"]["item_id"],
+            "Обязательное поле.",
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_delete_nonexistent_cart_item_bulk(self):
+        response = self.authorized_client.delete(
+            django.urls.reverse("api:catalog:update-cart-item"),
+            {"item_id": 99999},
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при удалении несуществующего товара",
+        )
+
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "Товар не найден в корзине",
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_get_cart_without_cart(self):
+        self.cart.delete()
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при отсутствии корзины",
+        )
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "Корзина не найдена",
+            "Неверное сообщение об ошибке",
+        )
+
+    @parameterized.parameterized.expand(
+        [
+            (2, True, "Количество успешно обновлено"),
+            (10, True, "Максимальное доступное количество"),
+            (11, False, "Превышение доступного количества"),
+        ]
+    )
+    def test_update_cart_item_quantity(
+        self, new_quantity, should_succeed, test_name
+    ):
+        initial_quantity = self.cart_item.quantity
+        response = self.authorized_client.patch(
+            django.urls.reverse("api:catalog:update-cart-item"),
+            {
+                "item_id": self.cart_item.id,
+                "quantity": new_quantity,
+            },
+        )
+
+        if should_succeed:
+            self.assertEqual(
+                response.status_code,
+                http.HTTPStatus.OK,
+                f"Неверный код ответа при {test_name}",
+            )
+            self.cart_item.refresh_from_db()
+            self.assertEqual(
+                self.cart_item.quantity,
+                new_quantity,
+                f"Количество товара не обновилось при {test_name}",
+            )
+            self.assertEqual(
+                response.data["data"]["quantity"],
+                new_quantity,
+                f"Неверное количество в ответе при {test_name}",
+            )
+            self.assertEqual(
+                response.data["data"]["total_price"],
+                (self.product.price + self.garment.price) * new_quantity,
+                f"Неверная общая стоимость в ответе при {test_name}",
+            )
+        else:
+            self.assertEqual(
+                response.status_code,
+                http.HTTPStatus.BAD_REQUEST,
+                f"Неверный код ответа при {test_name}",
+            )
+            self.cart_item.refresh_from_db()
+            self.assertEqual(
+                self.cart_item.quantity,
+                initial_quantity,
+                f"Количество товара изменилось при {test_name}",
+            )
+            self.assertEqual(
+                response.data["errors"]["form_error"],
+                "Недостаточно товара на складе",
+                f"Неверное сообщение об ошибке при {test_name}",
+            )

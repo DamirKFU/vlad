@@ -90,32 +90,16 @@ class AddToCartView(rest_framework.views.APIView):
 
     @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
-        serializer = catalog.serializers.AddToCartSerializer(data=request.data)
+        serializer = catalog.serializers.AddToCartSerializer(
+            data=request.data, context={"request": request}
+        )
         if not serializer.is_valid():
             return core.utils.error_response(
                 serializer_errors=serializer.errors,
             )
 
-        product = serializer.validated_data["product"]
-        garment = serializer.validated_data["garment"]
-
-        cart, _ = catalog.models.Cart.objects.get_or_create(user=request.user)
-        cart_item, created = catalog.models.CartItem.objects.get_or_create(
-            product=product,
-            garment=garment,
-            cart=cart,
-        )
-
-        if not created:
-            cart_item.quantity += 1
-            cart_item.save()
-
         return core.utils.success_response(
-            data={
-                "quantity": cart_item.quantity,
-                "total_price": (product.price + garment.price)
-                * cart_item.quantity,
-            },
+            data=serializer.save(),
             message="Товар успешно добавлен в корзину",
             http_status=rest_framework.status.HTTP_201_CREATED,
         )
@@ -125,113 +109,63 @@ class CartView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        cart = django.shortcuts.get_object_or_404(
-            catalog.models.Cart.objects.get_cart_with_items(),
-            user=request.user,
+        cart_serializer = catalog.serializers.CartSerializer(
+            data={}, context={"request": request}
+        )
+        if not cart_serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=cart_serializer.errors,
+                message="Ошибка валидации",
+            )
+
+        cart = cart_serializer.validated_data["cart"]
+
+        item_serializer = catalog.serializers.CartItemSerializer(
+            cart.items.all(), many=True, context={"request": request}
         )
 
-        cart_items = []
-        for item in cart.items.all():
-            cart_items.append(
-                {
-                    "id": item.id,
-                    "product_id": item.product.id,
-                    "garment_id": item.garment.id,
-                    "name": item.product.name,
-                    "category": item.garment.category.name,
-                    "color": item.garment.color.color,
-                    "size": item.garment.size,
-                    "quantity": item.quantity,
-                    "available_quantity": item.garment.count,
-                    "price": item.product.price + item.garment.price,
-                    "total_price": item.total_price,
-                    "image": (
-                        request.build_absolute_uri(
-                            item.product.image.image.url
-                        )
-                        if hasattr(item.product, "image")
-                        else None
-                    ),
-                }
-            )
-
-        return rest_framework.response.Response(cart_items)
-
-    @django.db.transaction.atomic
-    def delete(self, request, *args, **kwargs):
-        item_id = request.data.get("item_id")
-        if not item_id:
-            return rest_framework.response.Response(
-                {"error": "item_id is required"},
-                status=rest_framework.status.HTTP_400_BAD_REQUEST,
-            )
-
-        cart = django.shortcuts.get_object_or_404(
-            catalog.models.Cart, user=request.user
+        return core.utils.success_response(
+            data=item_serializer.data, message="Корзина успешно получена"
         )
-
-        try:
-            cart_item = cart.items.get(id=item_id)
-            cart.items.remove(cart_item)
-            cart_item.delete()
-            return rest_framework.response.Response(
-                {"message": "Товар успешно удален из корзины"}
-            )
-        except catalog.models.CartItem.DoesNotExist:
-            return rest_framework.response.Response(
-                {"error": "Товар не найден в корзине"},
-                status=rest_framework.status.HTTP_404_NOT_FOUND,
-            )
 
 
 class UpdateCartItemView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
-    def patch(self, request, item_id, *args, **kwargs):
-        quantity = request.data.get("quantity")
-        if not quantity or int(quantity) < 1:
-            return rest_framework.response.Response(
-                {"error": "Некорректное количество"},
-                status=rest_framework.status.HTTP_400_BAD_REQUEST,
+    def patch(self, request, *args, **kwargs):
+        serializer = catalog.serializers.UpdateCartItemSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
             )
 
-        try:
-            cart_item = catalog.models.CartItem.objects.get(
-                cart__user=request.user, id=item_id
+        return core.utils.success_response(
+            data=serializer.update(
+                serializer.validated_data["cart_item"],
+                serializer.validated_data,
+            ),
+            message="Количество товара успешно обновлено",
+        )
+
+    @django.db.transaction.atomic
+    def delete(self, request, *args, **kwargs):
+        serializer = catalog.serializers.DeleteCartItemSerializer(
+            data=request.data, context={"request": request}
+        )
+
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors, message="Ошибка валидации"
             )
 
-            cart_item.quantity = int(quantity)
-            cart_item.save()
+        serializer.save()
 
-            return rest_framework.response.Response(
-                {
-                    "message": "Количество товара успешно обновлено",
-                    "quantity": cart_item.quantity,
-                    "total_price": cart_item.total_price,
-                }
-            )
-
-        except catalog.models.CartItem.DoesNotExist:
-            return rest_framework.response.Response(
-                {"error": "Товар не найден в корзине"},
-                status=rest_framework.status.HTTP_404_NOT_FOUND,
-            )
-
-    def delete(self, request, item_id, *args, **kwargs):
-        try:
-            cart_item = catalog.models.CartItem.objects.get(
-                cart__user=request.user, id=item_id
-            )
-            cart_item.delete()
-
-            return rest_framework.response.Response(
-                {"message": "Товар успешно удален из корзины"}
-            )
-        except catalog.models.CartItem.DoesNotExist:
-            return rest_framework.response.Response(
-                {"error": "Товар не найден в корзине"},
-                status=rest_framework.status.HTTP_404_NOT_FOUND,
-            )
+        return core.utils.success_response(
+            message="Товар успешно удален из корзины"
+        )
 
 
 class CreateOrderView(rest_framework.generics.GenericAPIView):

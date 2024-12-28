@@ -74,6 +74,23 @@ class ProductSerializer(rest_framework.serializers.ModelSerializer):
         return None
 
 
+class CartSerializer(rest_framework.serializers.Serializer):
+    def validate(self, data):
+        cart = (
+            catalog.models.Cart.objects.get_cart_with_items()
+            .filter(user=self.context["request"].user)
+            .first()
+        )
+
+        if not cart:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Корзина не найдена"}
+            )
+
+        data["cart"] = cart
+        return data
+
+
 class AddToCartSerializer(rest_framework.serializers.Serializer):
     id_product = rest_framework.serializers.IntegerField()
     id_garment = rest_framework.serializers.IntegerField()
@@ -111,6 +128,91 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
         data["product"] = product
         data["garment"] = garment
         return data
+
+    def create(self, validated_data):
+        product = validated_data["product"]
+        garment = validated_data["garment"]
+        user = self.context["request"].user
+
+        cart, _ = catalog.models.Cart.objects.get_or_create(user=user)
+        cart_item, created = catalog.models.CartItem.objects.get_or_create(
+            product=product,
+            garment=garment,
+            cart=cart,
+            defaults={"quantity": 1},
+        )
+
+        if not created:
+            cart_item.quantity += 1
+            cart_item.save()
+
+        return {
+            "quantity": cart_item.quantity,
+            "total_price": (cart_item.product.price + cart_item.garment.price)
+            * cart_item.quantity,
+        }
+
+
+class DeleteCartItemSerializer(rest_framework.serializers.Serializer):
+    item_id = rest_framework.serializers.IntegerField()
+
+    def validate(self, data):
+        cart = self.context["request"].user.cart
+        cart_item = cart.items.filter(id=data["item_id"]).first()
+        if not cart_item:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Товар не найден в корзине"}
+            )
+
+        data["cart_item"] = cart_item
+        return data
+
+    def create(self, validated_data):
+        cart_item = validated_data["cart_item"]
+        cart_item.delete()
+        return cart_item
+
+
+class CartItemSerializer(rest_framework.serializers.ModelSerializer):
+    name = rest_framework.serializers.CharField(source="product.name")
+    category = rest_framework.serializers.CharField(
+        source="garment.category.name"
+    )
+    color = rest_framework.serializers.CharField(source="garment.color.color")
+    size = rest_framework.serializers.CharField(source="garment.size")
+    available_quantity = rest_framework.serializers.IntegerField(
+        source="garment.count"
+    )
+    price = rest_framework.serializers.SerializerMethodField()
+    image = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = catalog.models.CartItem
+        fields = [
+            "id",
+            "name",
+            "category",
+            "color",
+            "size",
+            "quantity",
+            "available_quantity",
+            "price",
+            "total_price",
+            "image",
+        ]
+
+    def get_price(self, obj):
+        return obj.product.price + obj.garment.price
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if obj.matching_image:
+            image = catalog.models.ProductAdditionalImage(
+                image=obj.matching_image
+            )
+            return request.build_absolute_uri(image.get_image_330x440().url)
+
+        return None
 
 
 class CreateOrderSerializer(rest_framework.serializers.Serializer):
@@ -240,3 +342,41 @@ class OrderSerializer(rest_framework.serializers.ModelSerializer):
             "address",
             "items",
         ]
+
+
+class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
+    item_id = rest_framework.serializers.IntegerField()
+    quantity = rest_framework.serializers.IntegerField(
+        min_value=1,
+        error_messages={
+            "min_value": "Некорректное количество",
+            "invalid": "Некорректное количество",
+        },
+    )
+
+    def validate(self, data):
+        cart_item = catalog.models.CartItem.objects.filter(
+            cart__user=self.context["request"].user,
+            id=data["item_id"],
+        ).first()
+
+        if not cart_item:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Товар не найден в корзине"}
+            )
+
+        if cart_item.garment.count < data["quantity"]:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Недостаточно товара на складе"}
+            )
+
+        data["cart_item"] = cart_item
+        return data
+
+    def update(self, instance, validated_data):
+        instance.quantity = validated_data["quantity"]
+        instance.save()
+        return {
+            "quantity": instance.quantity,
+            "total_price": instance.total_price,
+        }

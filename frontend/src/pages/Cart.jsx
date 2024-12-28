@@ -16,28 +16,35 @@ const Cart = () => {
     const fetchCart = async () => {
         try {
             const response = await api.get('catalog/cart/');
-            setCartItems(response.data);
+            setCartItems(response.data.data);
             setLoading(false);
         } catch (err) {
-            setError('Ошибка при загрузке корзины');
+            setError(err.response?.data?.message || 'Ошибка при загрузке корзины');
             setLoading(false);
         }
     };
 
     const handleUpdateQuantity = async (itemId, newQuantity) => {
         try {
-            const response = await api.patch(`catalog/cart/item/${itemId}/`, {
+            const response = await api.patch('catalog/cart/item/', {
+                item_id: itemId,
                 quantity: newQuantity
             });
             
-            // Обновляем только измененный элемент
-            setCartItems(prevItems => 
-                prevItems.map(item => 
-                    item.id === itemId 
-                        ? { ...item, quantity: response.data.quantity, total_price: response.data.total_price }
-                        : item
-                )
-            );
+            // Проверяем статус ответа
+            if (response.status === 200) {
+                setCartItems(prevItems => 
+                    prevItems.map(item => 
+                        item.id === itemId 
+                            ? { 
+                                ...item, 
+                                quantity: response.data.data.quantity,
+                                total_price: response.data.data.total_price
+                            }
+                            : item
+                    )
+                );
+            }
         } catch (err) {
             console.error('Ошибка при обновлении количества:', err);
         }
@@ -45,9 +52,14 @@ const Cart = () => {
 
     const handleRemoveItem = async (itemId) => {
         try {
-            await api.delete(`catalog/cart/item/${itemId}/`);
-            // Удаляем элемент из состояния
-            setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
+            const response = await api.delete('catalog/cart/item/', {
+                data: { item_id: itemId }
+            });
+            
+            // Проверяем статус ответа
+            if (response.status === 200) {
+                setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
+            }
         } catch (err) {
             console.error('Ошибка при удалении товара:', err);
         }
@@ -76,7 +88,20 @@ const Cart = () => {
                         {cartItems.map(item => (
                             <div key={item.id} className="cart-item">
                                 <div className="cart-item-image">
-                                    <img src={item.image} alt={item.name} />
+                                    {item.image ? (
+                                        <img 
+                                            src={item.image} 
+                                            alt={item.name}
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = '/placeholder.jpg';
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="product-image-placeholder">
+                                            Нет изображения
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="cart-item-details">
                                     <div className="cart-item-header">
@@ -122,7 +147,7 @@ const Cart = () => {
                                             </button>
                                             {item.quantity >= item.available_quantity && (
                                                 <span className="quantity-warning">
-                                                    На складе остал��сь: {item.available_quantity} шт.
+                                                    На складе осталось: {item.available_quantity} шт.
                                                 </span>
                                             )}
                                         </div>

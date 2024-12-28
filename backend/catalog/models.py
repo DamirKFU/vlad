@@ -365,6 +365,15 @@ class ProductAdditionalImage(BaseImage):
 
 class CartManager(django.db.models.Manager):
     def get_cart_with_items(self):
+        image_subquery = (
+            ProductAdditionalImage.objects.filter(
+                product_id=django.db.models.OuterRef("product_id"),
+                category_id=django.db.models.OuterRef("garment__category_id"),
+                color_id=django.db.models.OuterRef("garment__color_id"),
+            )
+            .order_by("id")
+            .values("image")[:1]
+        )
         return (
             super()
             .get_queryset()
@@ -388,7 +397,13 @@ class CartManager(django.db.models.Manager):
                                 f"{CartItem.garment.field.name}"
                                 f"__{Garment.category.field.name}"
                             ),
-                        ).only(
+                        )
+                        .annotate(
+                            matching_image=django.db.models.Subquery(
+                                image_subquery
+                            )
+                        )
+                        .only(
                             (
                                 f"{CartItem.cart.field.name}"
                                 f"__{Cart.id.field.name}"
@@ -449,13 +464,13 @@ class CartManager(django.db.models.Manager):
 
 class Cart(django.db.models.Model):
     objects = CartManager()
-    user = django.db.models.ForeignKey(
+    user = django.db.models.OneToOneField(
         users.models.User,
         verbose_name="пользователь",
         help_text="пользователь корзины",
         on_delete=django.db.models.CASCADE,
-        related_name="carts",
-        related_query_name="carts",
+        related_name="cart",
+        related_query_name="cart",
     )
 
     class Meta:

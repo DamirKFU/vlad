@@ -40,7 +40,7 @@ urlpatterns = [
         name="cart",
     ),
     django.urls.path(
-        "cart/item/<int:item_id>/",
+        "cart/item/",
         catalog.views.UpdateCartItemView.as_view(),
         name="update-cart-item",
     ),

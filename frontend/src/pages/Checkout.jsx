@@ -32,7 +32,7 @@ const Checkout = () => {
 
   const handleConfirmOrder = async () => {
     if (!address.trim()) {
-      setAddressError('Пожалуйста, укажите адрес доставки');
+      setAddressError('Пожалуйста, ��кажите адрес доставки');
       return;
     }
 
@@ -68,7 +68,20 @@ const Checkout = () => {
         {cartItems.map(item => (
           <div key={item.id} className="checkout-item">
             <div className="item-image">
-              <img src={item.image} alt={item.name} />
+              {item.image ? (
+                <img 
+                  src={item.image} 
+                  alt={item.name}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/placeholder.jpg';
+                  }}
+                />
+              ) : (
+                <div className="product-image-placeholder">
+                  Нет изображения
+                </div>
+              )}
             </div>
             <div className="item-info">
               <h3>{item.name}</h3>
