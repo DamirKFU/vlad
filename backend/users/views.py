@@ -11,6 +11,7 @@ import rest_framework.response
 import rest_framework.status
 import rest_framework.views
 
+import core.utils
 import users.models
 import users.serializers
 
@@ -22,23 +23,17 @@ class CrateUserView(rest_framework.generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            self.perform_create(serializer)
-            return rest_framework.response.Response(
-                {
-                    "status": "success",
-                    "message": "Регистрация успешно завершена",
-                },
-                status=rest_framework.status.HTTP_201_CREATED,
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
+                message="Ошибка при регистрации",
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
             )
 
-        return rest_framework.response.Response(
-            {
-                "status": "error",
-                "errors": serializer.errors,
-                "message": "Ошибка при регистрации",
-            },
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        self.perform_create(serializer)
+        return core.utils.success_response(
+            message="Регистрация успешно завершена",
+            http_status=rest_framework.status.HTTP_201_CREATED,
         )
 
 
@@ -64,36 +59,9 @@ class VerifedEmailTokenView(rest_framework.views.APIView):
             recipient_list=[token_user_email],
         )
 
-        return rest_framework.response.Response(
-            status=rest_framework.status.HTTP_201_CREATED,
-        )
-
-
-class CheckEmailTokenView(rest_framework.views.APIView):
-    serializer_class = users.serializers.EmailTokenSerializer
-    permission_classes = [rest_framework.permissions.AllowAny]
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-
-        if serializer.is_valid():
-            token_data = django.core.signing.loads(
-                serializer.data.get("token")
-            )
-            user_id = token_data.get("user_id")
-            user = django.shortcuts.get_object_or_404(
-                users.models.User, id=user_id
-            )
-            user.verified_email = True
-            user.save()
-            return rest_framework.response.Response(
-                serializer.data,
-                status=rest_framework.status.HTTP_202_ACCEPTED,
-            )
-
-        return rest_framework.response.Response(
-            serializer.data,
-            status=rest_framework.status.HTTP_406_NOT_ACCEPTABLE,
+        return core.utils.success_response(
+            message="Письмо с подтверждением отправлено",
+            http_status=rest_framework.status.HTTP_200_OK,
         )
 
 
@@ -103,24 +71,18 @@ class LoginView(rest_framework.generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data["user"]
-            django.contrib.auth.login(request, user)
-            return rest_framework.response.Response(
-                {
-                    "status": "success",
-                    "message": "Вход выполнен успешно",
-                },
-                status=rest_framework.status.HTTP_200_OK,
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
+                message="Ошибка авторизации",
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
             )
 
-        return rest_framework.response.Response(
-            {
-                "status": "error",
-                "errors": serializer.errors,
-                "message": "Ошибка авторизации",
-            },
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        user = serializer.validated_data["user"]
+        django.contrib.auth.login(request, user)
+        return core.utils.success_response(
+            message="Вход выполнен успешно",
+            http_status=rest_framework.status.HTTP_200_OK,
         )
 
 
@@ -129,9 +91,9 @@ class LogoutView(rest_framework.views.APIView):
 
     def post(self, request, *args, **kwargs):
         django.contrib.auth.logout(request)
-        return rest_framework.response.Response(
-            {"message": "Logout successful"},
-            status=rest_framework.status.HTTP_200_OK,
+        return core.utils.success_response(
+            message="Выход выполнен успешно",
+            http_status=rest_framework.status.HTTP_200_OK,
         )
 
 
@@ -139,9 +101,9 @@ class IsAuthView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-        return rest_framework.response.Response(
-            {"message": "You auth"},
-            status=rest_framework.status.HTTP_200_OK,
+        return core.utils.success_response(
+            message="Вы авторизованы",
+            http_status=rest_framework.status.HTTP_200_OK,
         )
 
 
@@ -151,44 +113,35 @@ class PasswordResetRequestView(rest_framework.generics.GenericAPIView):
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            user = users.models.User.objects.get(email=email)
-
-            token_data = {"user_id": user.id, "email": user.email}
-            token = django.core.signing.dumps(token_data)
-
-            reset_url = f"http://localhost:3000/reset-password/{token}"
-
-            django.core.mail.send_mail(
-                subject="Сброс пароля",
-                message="",
-                html_message=django.template.loader.render_to_string(
-                    "reset_password_email.html",
-                    {"reset_url": reset_url, "user": user},
-                ),
-                from_email=django.conf.settings.EMAIL_ADMIN,
-                recipient_list=[email],
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
+                message="Ошибка при запросе сброса пароля",
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
             )
 
-            return rest_framework.response.Response(
-                {
-                    "status": "success",
-                    "message": (
-                        "Инструкции по сбросу пароля отправлены"
-                        " на вашу почту."
-                    ),
-                },
-                status=rest_framework.status.HTTP_200_OK,
-            )
+        email = serializer.validated_data["email"]
+        user = serializer.validated_data["user"]
 
-        return rest_framework.response.Response(
-            {
-                "status": "error",
-                "errors": serializer.errors,
-                "message": "Ошибка при запросе сброса пароля",
-            },
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        token_data = {"user_id": user.id, "email": user.email}
+        token = django.core.signing.dumps(token_data)
+
+        reset_url = f"http://localhost:3000/reset-password/{token}"
+
+        django.core.mail.send_mail(
+            subject="Сброс пароля",
+            message="",
+            html_message=django.template.loader.render_to_string(
+                "reset_password_email.html",
+                {"reset_url": reset_url, "user": user},
+            ),
+            from_email=django.conf.settings.EMAIL_ADMIN,
+            recipient_list=[email],
+        )
+
+        return core.utils.success_response(
+            message="Инструкции по сбросу пароля отправлены на вашу почту",
+            http_status=rest_framework.status.HTTP_200_OK,
         )
 
 
@@ -198,30 +151,16 @@ class PasswordResetConfirmView(rest_framework.generics.GenericAPIView):
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            token_data = serializer.validated_data["token"]
-            user = django.shortcuts.get_object_or_404(
-                users.models.User,
-                id=token_data["user_id"],
-                email=token_data["email"],
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
+                message="Ошибка при сбросе пароля",
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
             )
 
-            user.set_password(serializer.validated_data["password"])
-            user.save()
+        serializer.save()
 
-            return rest_framework.response.Response(
-                {
-                    "status": "success",
-                    "message": "Пароль успешно изменен.",
-                },
-                status=rest_framework.status.HTTP_200_OK,
-            )
-
-        return rest_framework.response.Response(
-            {
-                "status": "error",
-                "errors": serializer.errors,
-                "message": "Ошибка при сбросе пароля",
-            },
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        return core.utils.success_response(
+            message="Пароль успешно изменен.",
+            http_status=rest_framework.status.HTTP_200_OK,
         )

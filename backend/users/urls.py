@@ -36,11 +36,6 @@ urlpatterns = [
         name="verifed_email",
     ),
     django.urls.path(
-        "check-email-token/",
-        users.views.CheckEmailTokenView.as_view(),
-        name="check_email_token",
-    ),
-    django.urls.path(
         "password/reset/",
         users.views.PasswordResetRequestView.as_view(),
         name="password_reset_request",

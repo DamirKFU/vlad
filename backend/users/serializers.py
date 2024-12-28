@@ -54,15 +54,15 @@ class LoginSerializer(rest_framework.serializers.Serializer):
     )
 
     def validate(self, data):
-        username = data.get("username")
-        password = data.get("password")
+        username = data["username"]
+        password = data["password"]
 
         user = django.contrib.auth.authenticate(
             username=username, password=password
         )
         if user is None:
             raise rest_framework.serializers.ValidationError(
-                {"non_field_errors": ["Пользователь не найден"]}
+                {"form_error": "Пользователь не найден"}
             )
 
         return {"user": user}
@@ -80,25 +80,45 @@ class EmailTokenSerializer(rest_framework.serializers.Serializer):
         td = django.utils.timezone.timedelta(seconds=3600)
         if dt + td > django.utils.timezone.datetime.now():
             raise rest_framework.validators.ValidationError(
-                "token not validate"
+                {"token": "Токен недействителен"}
             )
 
+        user = users.models.User.objects.filter(
+            id=token_data.get("user_id")
+        ).first()
+
+        if user is None:
+            raise rest_framework.validators.ValidationError(
+                {"form_error": "Пользователь не найден"}
+            )
+
+        data["user_id"] = token_data.get("user_id")
         return data
+
+    def create(self, validated_data):
+        users.models.User.objects.filter(
+            id=validated_data.get("user_id")
+        ).update(verified_email=True)
 
 
 class PasswordResetRequestSerializer(rest_framework.serializers.Serializer):
     email = rest_framework.serializers.EmailField()
 
-    def validate_email(self, value):
-        normalized_email = users.models.UserManager.normalize_email(value)
-        try:
-            users.models.User.objects.get(email=normalized_email)
-        except users.models.User.DoesNotExist:
+    def validate(self, data):
+        normalized_email = users.models.UserManager.normalize_email(
+            data.get("email")
+        )
+
+        user = users.models.User.objects.filter(email=normalized_email).first()
+        if user is None:
             raise rest_framework.serializers.ValidationError(
-                "Пользователь с таким email не найден."
+                {"form_error": "Пользователь с таким email не найден."}
             )
 
-        return normalized_email
+        data["email"] = normalized_email
+        data["user"] = user
+
+        return data
 
 
 class PasswordResetConfirmSerializer(rest_framework.serializers.Serializer):
@@ -107,13 +127,36 @@ class PasswordResetConfirmSerializer(rest_framework.serializers.Serializer):
         validators=[users.validators.PasswordValidator()]
     )
 
-    def validate_token(self, value):
+    def validate(self, data):
+        token = data.get("token")
         try:
-            return django.core.signing.loads(value, max_age=3600)
+            token_data = django.core.signing.loads(token, max_age=3600)
+
         except (
             django.core.signing.BadSignature,
             django.core.signing.SignatureExpired,
         ):
             raise rest_framework.serializers.ValidationError(
-                "Недействительная или просроченная ссылка для сброса пароля."
+                {
+                    "token": (
+                        "Недействительная или просроченная ссылка для сброса "
+                        "пароля."
+                    )
+                }
             )
+
+        user = users.models.User.objects.filter(
+            id=token_data["user_id"], email=token_data["email"]
+        ).first()
+        if user is None:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Пользователь не найден"}
+            )
+
+        return {"user": user, "password": data.get("password")}
+
+    def save(self):
+        user = self.validated_data.get("user")
+        password = self.validated_data.get("password")
+        user.set_password(password)
+        user.save()

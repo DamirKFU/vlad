@@ -2,6 +2,7 @@ import django.test
 import django.urls
 import parameterized
 import rest_framework.status
+import rest_framework.test
 
 import users.models
 
@@ -27,7 +28,7 @@ class AuthTestCase(django.test.TestCase):
                 },
                 rest_framework.status.HTTP_201_CREATED,
                 {
-                    "status": "success",
+                    "data": {},
                     "message": "Регистрация успешно завершена",
                 },
             ),
@@ -40,11 +41,14 @@ class AuthTestCase(django.test.TestCase):
                 },
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
                     "errors": {
-                        "username": [
-                            "Имя пользователя должно быть от 5 до 32 символов."
-                        ]
+                        "fields": {
+                            "username": (
+                                "Имя пользователя должно быть от 5 до 32 "
+                                "символов."
+                            )
+                        },
+                        "form_error": None,
                     },
                     "message": "Ошибка при регистрации",
                 },
@@ -58,12 +62,15 @@ class AuthTestCase(django.test.TestCase):
                 },
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
                     "errors": {
-                        "username": [
-                            "Имя пользователя может содержать только "
-                            "латинские буквы, цифры и нижнее подчеркивание."
-                        ]
+                        "fields": {
+                            "username": (
+                                "Имя пользователя может содержать только "
+                                "латинские буквы, цифры и нижнее "
+                                "подчеркивание."
+                            )
+                        },
+                        "form_error": None,
                     },
                     "message": "Ошибка при регистрации",
                 },
@@ -77,11 +84,13 @@ class AuthTestCase(django.test.TestCase):
                 },
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
                     "errors": {
-                        "email": [
-                            "Введите правильный адрес электронной почты."
-                        ]
+                        "fields": {
+                            "email": (
+                                "Введите правильный адрес электронной почты."
+                            )
+                        },
+                        "form_error": None,
                     },
                     "message": "Ошибка при регистрации",
                 },
@@ -95,12 +104,14 @@ class AuthTestCase(django.test.TestCase):
                 },
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
                     "errors": {
-                        "password": [
-                            "Пароль должен содержать хотя "
-                            "бы одну прописную букву."
-                        ]
+                        "fields": {
+                            "password": (
+                                "Пароль должен содержать хотя "
+                                "бы одну прописную букву."
+                            )
+                        },
+                        "form_error": None,
                     },
                     "message": "Ошибка при регистрации",
                 },
@@ -120,15 +131,17 @@ class AuthTestCase(django.test.TestCase):
                 "valid_login",
                 {"username": "testuser", "password": "TestPass123"},
                 rest_framework.status.HTTP_200_OK,
-                {"status": "success", "message": "Вход выполнен успешно"},
+                {"data": {}, "message": "Вход выполнен успешно"},
             ),
             (
                 "wrong_password",
                 {"username": "testuser", "password": "WrongPass123"},
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
-                    "errors": {"non_field_errors": ["Пользователь не найден"]},
+                    "errors": {
+                        "fields": {},
+                        "form_error": "Пользователь не найден",
+                    },
                     "message": "Ошибка авторизации",
                 },
             ),
@@ -137,8 +150,10 @@ class AuthTestCase(django.test.TestCase):
                 {"username": "nonexistent", "password": "TestPass123"},
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
-                    "errors": {"non_field_errors": ["Пользователь не найден"]},
+                    "errors": {
+                        "fields": {},
+                        "form_error": "Пользователь не найден",
+                    },
                     "message": "Ошибка авторизации",
                 },
             ),
@@ -147,8 +162,10 @@ class AuthTestCase(django.test.TestCase):
                 {"username": "testuser"},
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
-                    "errors": {"password": ["Обязательное поле."]},
+                    "errors": {
+                        "fields": {"password": "Обязательное поле."},
+                        "form_error": None,
+                    },
                     "message": "Ошибка авторизации",
                 },
             ),
@@ -157,16 +174,18 @@ class AuthTestCase(django.test.TestCase):
                 {"username": "test", "password": "short"},
                 rest_framework.status.HTTP_400_BAD_REQUEST,
                 {
-                    "status": "error",
                     "errors": {
-                        "username": [
-                            "Убедитесь, что это значение содержит "
-                            "не менее 5 символов."
-                        ],
-                        "password": [
-                            "Убедитесь, что это значение содержит "
-                            "не менее 8 символов."
-                        ],
+                        "fields": {
+                            "username": (
+                                "Убедитесь, что это значение содержит "
+                                "не менее 5 символов."
+                            ),
+                            "password": (
+                                "Убедитесь, что это значение содержит "
+                                "не менее 8 символов."
+                            ),
+                        },
+                        "form_error": None,
                     },
                     "message": "Ошибка авторизации",
                 },
@@ -207,9 +226,13 @@ class AuthTestCaseAdditional(django.test.TestCase):
         self.assertEqual(
             response.json(),
             {
-                "status": "error",
                 "errors": {
-                    "username": ["Пользователь с таким именем уже существует."]
+                    "fields": {
+                        "username": (
+                            "Пользователь с таким именем уже существует."
+                        )
+                    },
+                    "form_error": None,
                 },
                 "message": "Ошибка при регистрации",
             },
@@ -236,9 +259,11 @@ class AuthTestCaseAdditional(django.test.TestCase):
         self.assertEqual(
             response.json(),
             {
-                "status": "error",
                 "errors": {
-                    "email": ["Пользователь с таким email уже существует."]
+                    "fields": {
+                        "email": "Пользователь с таким email уже существует."
+                    },
+                    "form_error": None,
                 },
                 "message": "Ошибка при регистрации",
             },
@@ -273,7 +298,19 @@ class PasswordResetTestCase(django.test.TestCase):
         )
 
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+            "Неверный код ответа при успешном запросе сброса пароля",
+        )
+        self.assertEqual(
+            response.json(),
+            {
+                "data": {},
+                "message": (
+                    "Инструкции по сбросу пароля отправлены на вашу почту"
+                ),
+            },
+            "Неверный формат ответа при успешном запросе сброса пароля",
         )
         self.assertEqual(len(django.core.mail.outbox), 1)
         self.assertEqual(django.core.mail.outbox[0].subject, "Сброс пароля")
@@ -285,7 +322,21 @@ class PasswordResetTestCase(django.test.TestCase):
         )
 
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+            "Неверный код ответа при неверном email",
+        )
+
+        self.assertEqual(
+            response.json(),
+            {
+                "errors": {
+                    "fields": {},
+                    "form_error": "Пользователь с таким email не найден.",
+                },
+                "message": "Ошибка при запросе сброса пароля",
+            },
+            "Неверный формат ответа при неверном email",
         )
         self.assertEqual(len(django.core.mail.outbox), 0)
 
@@ -299,12 +350,20 @@ class PasswordResetTestCase(django.test.TestCase):
         token_end = email_content.find('"', token_start)
         token = email_content[token_start:token_end]
         new_password = "NewPass123"
+
         response = self.client.post(
             self.reset_confirm_url, {"token": token, "password": new_password}
         )
 
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+            "Неверный код ответа при успешном сбросе пароля",
+        )
+        self.assertEqual(
+            response.json(),
+            {"data": {}, "message": "Пароль успешно изменен."},
+            "Неверный формат ответа при успешном сбросе пароля",
         )
 
         self.user.refresh_from_db()
@@ -317,8 +376,94 @@ class PasswordResetTestCase(django.test.TestCase):
         )
 
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+            "Неверный код ответа при неверном токене",
+        )
+        self.assertEqual(
+            response.json(),
+            {
+                "errors": {
+                    "fields": {
+                        "token": (
+                            "Недействительная или "
+                            "просроченная ссылка для сброса пароля."
+                        )
+                    },
+                    "form_error": None,
+                },
+                "message": "Ошибка при сбросе пароля",
+            },
+            "Неверный формат ответа при неверном токене",
         )
 
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("OldPass123"))
+
+
+class LogoutViewTest(django.test.TestCase):
+    def setUp(self):
+        self.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="TestPass123",
+        )
+        self.client = rest_framework.test.APIClient()
+        self.logout_url = django.urls.reverse("api:users:logout")
+
+    def test_logout_success(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.logout_url)
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+            "Неверный код ответа при успешном выходе",
+        )
+        self.assertEqual(
+            response.json(),
+            {"data": {}, "message": "Выход выполнен успешно"},
+            "Неверный формат ответа при успешном выходе",
+        )
+
+    def test_logout_unauthorized(self):
+        response = self.client.post(self.logout_url)
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_403_FORBIDDEN,
+            "Неверный код ответа для неавторизованного пользователя",
+        )
+
+
+class IsAuthViewTest(django.test.TestCase):
+    def setUp(self):
+        self.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="TestPass123",
+        )
+        self.client = rest_framework.test.APIClient()
+        self.is_auth_url = django.urls.reverse("api:users:is_auth")
+
+    def test_is_auth_success(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.is_auth_url)
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+            "Неверный код ответа для авторизованного пользователя",
+        )
+        self.assertEqual(
+            response.json(),
+            {"data": {}, "message": "Вы авторизованы"},
+            "Неверный формат ответа для авторизованного пользователя",
+        )
+
+    def test_is_auth_unauthorized(self):
+        response = self.client.post(self.is_auth_url)
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_403_FORBIDDEN,
+            "Неверный код ответа для неавторизованного пользователя",
+        )
