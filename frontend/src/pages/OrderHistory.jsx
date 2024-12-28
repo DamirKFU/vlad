@@ -31,14 +31,22 @@ const OrderHistory = () => {
 
     const handleCancelOrder = async (orderId) => {
         try {
-            await api.post(`catalog/order/${orderId}/cancel/`);
-            setOrders(orders.map(order => 
-                order.id === orderId 
-                    ? { ...order, status: 'CN', status_display: 'Отменён' }
-                    : order
-            ));
+            const response = await api.post('catalog/orders/history/', {
+                order_id: orderId
+            });
+            
+            if (response.status === 200) {
+                // Обновляем состояние заказа локально
+                setOrders(prevOrders => 
+                    prevOrders.map(order => 
+                        order.id === orderId 
+                            ? { ...order, status: 'CN', status_display: 'Отменён' }
+                            : order
+                    )
+                );
+            }
         } catch (err) {
-            alert(err.response?.data?.error || 'Ошибка при отмене заказа');
+            console.error('Ошибка при отмене заказа:', err);
         }
     };
 

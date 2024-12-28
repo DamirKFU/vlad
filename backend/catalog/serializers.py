@@ -1,5 +1,3 @@
-import django.db
-import django.shortcuts
 import rest_framework.serializers
 
 import catalog.models
@@ -25,9 +23,12 @@ class ConstructorProductCreateSerializer(
         embroidery_image = validated_data.pop("embroidery_image", None)
         user = self.context["request"].user
 
-        garment = django.shortcuts.get_object_or_404(
-            catalog.models.Garment, id=garment_id
-        )
+        garment = catalog.models.Garment.objects.filter(id=garment_id).first()
+
+        if not garment:
+            raise rest_framework.serializers.ValidationError(
+                {"garment_id": "Одежда не найдена"}
+            )
 
         constructor_product = catalog.models.ConstructorProduct.objects.create(
             garment=garment,
@@ -380,3 +381,27 @@ class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
             "quantity": instance.quantity,
             "total_price": instance.total_price,
         }
+
+
+class CancelOrderSerializer(rest_framework.serializers.Serializer):
+    order_id = rest_framework.serializers.IntegerField()
+
+    def validate(self, data):
+        order = catalog.models.Order.objects.filter(
+            user=self.context["request"].user,
+            id=data["order_id"],
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+        ).first()
+
+        if not order:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Заказ не найден или не может быть отменен"}
+            )
+
+        data["order"] = order
+        return data
+
+    def create(self, validated_data):
+        order = validated_data["order"]
+        order.cancel_order()
+        return order

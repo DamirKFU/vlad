@@ -45,7 +45,7 @@ class ItemListViewTest(django.test.TestCase):
             "Неверный код ответа",
         )
 
-        data = response.data
+        data = response.data["data"]
         self.assertIn(
             self.category.name,
             data,
@@ -169,12 +169,12 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
         self.assertIn(
             "id",
-            response.data,
+            response.data["data"],
             "В ответе отсутствует id созданного товара",
         )
 
         constructor_product = catalog.models.ConstructorProduct.objects.get(
-            id=response.data["id"],
+            id=response.data["data"]["id"],
         )
         self.assertTrue(
             constructor_product.image.image,
@@ -197,7 +197,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
         self.assertEqual(
             response.status_code,
-            http.HTTPStatus.NOT_FOUND,
+            http.HTTPStatus.BAD_REQUEST,
             "Несуществующий товар должен возвращать 404",
         )
 
@@ -231,7 +231,7 @@ class ConstructorProductCreateViewTest(django.test.TestCase):
         )
 
         constructor_product = catalog.models.ConstructorProduct.objects.get(
-            id=response.data["id"],
+            id=response.data["data"]["id"],
         )
         self.assertTrue(
             constructor_product.image.image,
@@ -1036,3 +1036,232 @@ class CartViewTest(django.test.TestCase):
                 "Недостаточно товара на складе",
                 f"Неверное сообщение об ошибке при {test_name}",
             )
+
+
+class OrderHistoryViewTest(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpass",
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Тестовая категория",
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Зеленый",
+            color="#008000",
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Тестовый продукт",
+            price=100,
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            price=50,
+            count=10,
+        )
+        cls.product.garments.add(cls.garment)
+
+    def setUp(self):
+        self.guest_client = rest_framework.test.APIClient()
+        self.authorized_client = rest_framework.test.APIClient()
+        self.authorized_client.force_authenticate(user=self.user)
+
+        self.order = catalog.models.Order.objects.create(
+            user=self.user,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+            address="Test Address",
+            phone="+79991234567",
+        )
+        self.order_item = catalog.models.OrderItem.objects.create(
+            order=self.order,
+            product=self.product,
+            garment=self.garment,
+            quantity=2,
+            price=self.product.price + self.garment.price,
+        )
+
+    def test_unauthorized_get_orders(self):
+        response = self.guest_client.get(
+            django.urls.reverse("api:catalog:order-history")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.FORBIDDEN,
+            "Неавторизованный пользователь может получить заказы",
+        )
+
+    def test_get_orders_success(self):
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:order-history")
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.OK,
+            "Неверный код ответа при получении заказов",
+        )
+
+        data = response.data["data"]
+        self.assertEqual(
+            data["count"],
+            1,
+            "Неверное количество заказов",
+        )
+        order_data = data["results"][0]
+        self.assertEqual(
+            order_data["status"],
+            self.order.status,
+            "Неверный статус заказа",
+        )
+        self.assertEqual(
+            order_data["address"],
+            self.order.address,
+            "Неверный адрес заказа",
+        )
+
+        item_data = order_data["items"][0]
+        self.assertEqual(
+            item_data["name"],
+            self.product.name,
+            "Неверное имя продукта",
+        )
+        self.assertEqual(
+            item_data["category"],
+            self.category.name,
+            "Неверная категория",
+        )
+        self.assertEqual(
+            item_data["color"],
+            self.color.color,
+            "Неверный цвет",
+        )
+        self.assertEqual(
+            item_data["size"],
+            self.garment.size,
+            "Неверный размер",
+        )
+        self.assertEqual(
+            item_data["quantity"],
+            self.order_item.quantity,
+            "Неверное количество",
+        )
+        self.assertEqual(
+            item_data["price"],
+            self.order_item.price,
+            "Неверная цена",
+        )
+
+    @parameterized.parameterized.expand(
+        [
+            (
+                catalog.models.OrderStatus.WAITING_PAYMENT,
+                True,
+                "Отмена заказа в ожидании оплаты",
+            ),
+            (
+                catalog.models.OrderStatus.PAID,
+                False,
+                "Попытка отменить оплаченный заказ",
+            ),
+            (
+                catalog.models.OrderStatus.IN_DELIVERY,
+                False,
+                "Попытка отменить заказ в доставке",
+            ),
+            (
+                catalog.models.OrderStatus.DELIVERED,
+                False,
+                "Попытка отменить доставленный заказ",
+            ),
+            (
+                catalog.models.OrderStatus.CANCELED,
+                False,
+                "Попытка отменить отмененный заказ",
+            ),
+        ]
+    )
+    def test_cancel_order(self, status, should_succeed, test_name):
+        self.order.status = status
+        self.order.save()
+
+        initial_garment_count = self.garment.count
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:order-history"),
+            {"order_id": self.order.id},
+        )
+
+        if should_succeed:
+            self.assertEqual(
+                response.status_code,
+                http.HTTPStatus.OK,
+                f"Неверный код ответа при {test_name}",
+            )
+            self.assertEqual(
+                response.data["message"],
+                "Заказ успешно отменен",
+                f"Неверное сообщение при {test_name}",
+            )
+            self.order.refresh_from_db()
+            self.assertEqual(
+                self.order.status,
+                catalog.models.OrderStatus.CANCELED,
+                f"Статус заказа не изменился при {test_name}",
+            )
+            self.garment.refresh_from_db()
+            self.assertEqual(
+                self.garment.count,
+                initial_garment_count + self.order_item.quantity,
+                f"Количество товара не увеличилось при {test_name}",
+            )
+        else:
+            self.assertEqual(
+                response.status_code,
+                http.HTTPStatus.BAD_REQUEST,
+                f"Неверный код ответа при {test_name}",
+            )
+            self.assertEqual(
+                response.data["errors"]["form_error"],
+                "Заказ не найден или не может быть отменен",
+                f"Неверное сообщение об ошибке при {test_name}",
+            )
+            self.garment.refresh_from_db()
+            self.assertEqual(
+                self.garment.count,
+                initial_garment_count,
+                f"Количество товара изменилось при {test_name}",
+            )
+
+    def test_cancel_nonexistent_order(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:order-history"),
+            {"order_id": 99999},
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при отмене несуществующего заказа",
+        )
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "Заказ не найден или не может быть отменен",
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_cancel_order_validation(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:order-history"),
+            {},
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при отсутствии order_id",
+        )
+        self.assertEqual(
+            response.data["errors"]["fields"]["order_id"],
+            "Обязательное поле.",
+            "Неверное сообщение об ошибке",
+        )

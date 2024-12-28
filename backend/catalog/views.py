@@ -21,7 +21,10 @@ class GarmentListView(rest_framework.views.APIView):
     def get(self, request, *args, **kwargs):
         garments_data = catalog.models.Garment.objects.all_items()
         data = catalog.utils.get_structured_garments(garments_data)
-        return rest_framework.response.Response(data)
+        return core.utils.success_response(
+            data=data,
+            message="Одежда успешно получена",
+        )
 
 
 class ConstructorProductCreateView(rest_framework.views.APIView):
@@ -35,14 +38,15 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
         )
         if serializer.is_valid():
             constructor_product = serializer.save()
-            return rest_framework.response.Response(
-                {"id": constructor_product.id},
-                status=rest_framework.status.HTTP_201_CREATED,
+            return core.utils.success_response(
+                data={"id": constructor_product.id},
+                message="Конструктор успешно создан",
+                http_status=rest_framework.status.HTTP_201_CREATED,
             )
 
-        return rest_framework.response.Response(
-            serializer.errors,
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        return core.utils.error_response(
+            serializer_errors=serializer.errors,
+            message="Ошибка валидации",
         )
 
 
@@ -213,26 +217,18 @@ class OrderHistoryView(rest_framework.generics.ListAPIView):
             message="Заказы успешно получены",
         )
 
-
-class CancelOrderView(rest_framework.views.APIView):
-    permission_classes = (rest_framework.permissions.IsAuthenticated,)
-
     @django.db.transaction.atomic
-    def post(self, request, order_id, *args, **kwargs):
-        try:
-            order = catalog.models.Order.objects.get(
-                user=request.user,
-                id=order_id,
-                status=catalog.models.OrderStatus.WAITING_PAYMENT,
+    def post(self, request, *args, **kwargs):
+        serializer = catalog.serializers.CancelOrderSerializer(
+            data=request.data, context={"request": request}
+        )
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
+                message="Ошибка валидации",
             )
-            order.cancel_order()
 
-            return rest_framework.response.Response(
-                {"message": "Заказ успешно отменен"},
-                status=rest_framework.status.HTTP_200_OK,
-            )
-        except catalog.models.Order.DoesNotExist:
-            return rest_framework.response.Response(
-                {"error": "Заказ не найден или не может быть отменен"},
-                status=rest_framework.status.HTTP_404_NOT_FOUND,
-            )
+        serializer.save()
+        return core.utils.success_response(
+            message="Заказ успешно отменен",
+        )

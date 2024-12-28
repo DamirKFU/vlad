@@ -32,7 +32,7 @@ const Checkout = () => {
 
   const handleConfirmOrder = async () => {
     if (!address.trim()) {
-      setAddressError('Пожалуйста, ��кажите адрес доставки');
+      setAddressError('Пожалуйста, укажите адрес доставки');
       return;
     }
 
@@ -52,11 +52,14 @@ const Checkout = () => {
         phone: phone.trim()
       });
       
-      if (response.data.success) {
+      if (response.status === 201) {
         navigate('/orders');
       }
     } catch (err) {
-      alert(err.response?.data?.error?.message || 'Ошибка при создании заказа');
+      const errorMessage = err.response?.data?.errors?.form_error 
+        || err.response?.data?.message 
+        || 'Ошибка при создании заказа';
+      alert(errorMessage);
     }
   };
 
