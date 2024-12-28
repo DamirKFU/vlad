@@ -430,6 +430,22 @@ class CartManager(django.db.models.Manager):
             )
         )
 
+    def get_cart_for_order(self, user):
+        return (
+            self.filter(user=user)
+            .select_related("user")
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    "items",
+                    queryset=CartItem.objects.select_related(
+                        "product",
+                        "garment",
+                    ),
+                ),
+            )
+            .first()
+        )
+
 
 class Cart(django.db.models.Model):
     objects = CartManager()

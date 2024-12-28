@@ -121,72 +121,72 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
 
     def validate(self, data):
         user = self.context["request"].user
-        cart = django.shortcuts.get_object_or_404(
-            catalog.models.Cart.objects.prefetch_related(
-                django.db.models.Prefetch(
-                    "items",
-                    queryset=catalog.models.CartItem.objects.select_related(
-                        "product",
-                        "garment",
-                    ),
-                ),
-            ).select_related(
-                "user",
-            ),
-            user=user,
-        )
+        cart = catalog.models.Cart.objects.get_cart_for_order(user=user)
 
-        for cart_item in cart.items.all():
+        if cart is None:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Корзина не найдена"}
+            )
+
+        if cart.user.orders.filter(
+            status=catalog.models.OrderStatus.WAITING_PAYMENT
+        ).exists():
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "У вас уже есть заказ в ожидании оплаты."}
+            )
+
+        cart_items = cart.items.all()
+        if not cart_items:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Корзина пуста"}
+            )
+
+        for cart_item in cart_items:
             garment = cart_item.garment
             if garment.count < cart_item.quantity:
                 raise rest_framework.serializers.ValidationError(
-                    f"Недостаточно товара '{cart_item.product.name}' "
-                    f"размера {garment.size} цвета {garment.color.name}"
+                    {"form_error": f"Недостаточно товара для {cart_item.id}"}
                 )
 
         data["cart"] = cart
         return data
 
     def create(self, validated_data):
-        cart = validated_data["cart"]
-        address = validated_data["address"]
-        phone = validated_data["phone"]
-
-        if catalog.models.Order.objects.filter(
-            user=cart.user,
-            status=catalog.models.OrderStatus.WAITING_PAYMENT,
-        ).exists():
-            raise rest_framework.serializers.ValidationError(
-                "У вас уже есть заказ в ожидании оплаты."
-            )
-
         order = catalog.models.Order.objects.create(
-            user=cart.user, address=address, phone=phone
+            user=validated_data["cart"].user,
+            address=validated_data["address"],
+            phone=validated_data["phone"],
         )
 
-        order_items = []
-        garments_to_update = []
-
-        for cart_item in cart.items.all():
-            garment = cart_item.garment
-
-            garment.count -= cart_item.quantity
-            garments_to_update.append(garment)
-
-            order_items.append(
+        def create_order_item_and_update_garment(item, order):
+            garment = item.garment
+            return (
                 catalog.models.OrderItem(
                     order=order,
-                    product=cart_item.product,
+                    product=item.product,
                     garment=garment,
-                    quantity=cart_item.quantity,
-                    price=cart_item.product.price + garment.price,
+                    quantity=item.quantity,
+                    price=item.product.price + garment.price,
+                ),
+                setattr(
+                    garment,
+                    catalog.models.Garment.count.field.name,
+                    garment.count - item.quantity,
                 )
+                or garment,
             )
+
+        order_items, garments = zip(
+            *[
+                create_order_item_and_update_garment(item, order)
+                for item in validated_data["cart"].items.all()
+            ]
+        )
 
         catalog.models.OrderItem.objects.bulk_create(order_items)
         catalog.models.Garment.objects.bulk_update(
-            garments_to_update,
-            ["count"],
+            garments,
+            [catalog.models.Garment.count.field.name],
         )
 
         return order

@@ -234,37 +234,26 @@ class UpdateCartItemView(rest_framework.views.APIView):
             )
 
 
-class CreateOrderView(rest_framework.views.APIView):
+class CreateOrderView(rest_framework.generics.GenericAPIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
+    serializer_class = catalog.serializers.CreateOrderSerializer
 
     @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
         serializer = catalog.serializers.CreateOrderSerializer(
             data=request.data, context={"request": request}
         )
-
-        if serializer.is_valid():
-            order = serializer.save()
-            return rest_framework.response.Response(
-                {
-                    "success": True,
-                    "data": {"order_id": order.id, "status": order.status},
-                    "error": None,
-                },
-                status=rest_framework.status.HTTP_201_CREATED,
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                serializer_errors=serializer.errors,
+                message="Ошибка валидации",
             )
 
-        return rest_framework.response.Response(
-            {
-                "success": False,
-                "data": None,
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": "Ошибка валидации",
-                    "fields": serializer.errors,
-                },
-            },
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        order = serializer.save()
+        return core.utils.success_response(
+            data={"order_id": order.id, "status": order.status},
+            message="Заказ успешно создан",
+            http_status=rest_framework.status.HTTP_201_CREATED,
         )
 
 

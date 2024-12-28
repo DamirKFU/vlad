@@ -5,6 +5,7 @@ import tempfile
 import django.core.files.uploadedfile
 import django.test
 import django.urls
+import parameterized
 import PIL
 import rest_framework.test
 
@@ -41,7 +42,7 @@ class ItemListViewTest(django.test.TestCase):
         self.assertEqual(
             response.status_code,
             http.HTTPStatus.OK,
-            "Н��верный код ответа",
+            "Неверный код ответа",
         )
 
         data = response.data
@@ -516,4 +517,210 @@ class AddToCartViewTest(django.test.TestCase):
             cart_items_count,
             1,
             "Был создан новый CartItem вместо обновления существующего",
+        )
+
+
+class CreateOrderViewTest(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpass",
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Тестовая категория",
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Зеленый",
+            color="#008000",
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Тестовый продукт",
+            price=100,
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            price=50,
+            count=10,
+        )
+        cls.product.garments.add(cls.garment)
+
+    def setUp(self):
+        self.guest_client = rest_framework.test.APIClient()
+        self.authorized_client = rest_framework.test.APIClient()
+        self.authorized_client.force_authenticate(user=self.user)
+
+        self.cart = catalog.models.Cart.objects.create(user=self.user)
+        self.cart_item = catalog.models.CartItem.objects.create(
+            cart=self.cart,
+            product=self.product,
+            garment=self.garment,
+            quantity=2,
+        )
+
+    def test_unauthorized_create_order(self):
+        response = self.guest_client.post(
+            django.urls.reverse("api:catalog:create-order"),
+            {
+                "address": "Test Address",
+                "phone": "+79991234567",
+            },
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.FORBIDDEN,
+            "Неавторизованный пользователь может создать заказ",
+        )
+
+    @parameterized.parameterized.expand(
+        [
+            ("", "+79991234567", "Это поле не может быть пустым."),
+            ("Test Address", "", "Это поле не может быть пустым."),
+            (
+                "Test Address",
+                "invalid_phone",
+                "Неверный формат номера телефона",
+            ),
+        ]
+    )
+    def test_create_order_validation(self, address, phone, expected_error):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:create-order"),
+            {
+                "address": address,
+                "phone": phone,
+            },
+        )
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при невалидных данных",
+        )
+        self.assertIn(
+            expected_error,
+            str(response.data),
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_create_order_success(self):
+        initial_garment_count = self.garment.count
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:create-order"),
+            {
+                "address": "Test Address",
+                "phone": "+79991234567",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.CREATED,
+            "Неверный код ответа при создании заказа",
+        )
+        self.assertEqual(
+            response.data["message"],
+            "Заказ успешно создан",
+            "Неверное сообщение об успешном создании",
+        )
+
+        order = catalog.models.Order.objects.first()
+        self.assertIsNotNone(order, "Заказ не был создан")
+        self.assertEqual(
+            order.status,
+            catalog.models.OrderStatus.WAITING_PAYMENT,
+            "Неверный статус заказа",
+        )
+
+        self.garment.refresh_from_db()
+        self.assertEqual(
+            self.garment.count,
+            initial_garment_count - self.cart_item.quantity,
+            "Количество товара не уменьшилось",
+        )
+
+        order_item = order.items.first()
+        self.assertEqual(
+            order_item.quantity,
+            self.cart_item.quantity,
+            "Неверное количество товара в заказе",
+        )
+        self.assertEqual(
+            order_item.price,
+            self.product.price + self.garment.price,
+            "Неверная цена товара в заказе",
+        )
+
+    def test_create_order_with_existing_waiting_payment(self):
+        catalog.models.Order.objects.create(
+            user=self.user,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+            address="Test Address",
+            phone="+79991234567",
+        )
+
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:create-order"),
+            {
+                "address": "Test Address",
+                "phone": "+79991234567",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при попытке создать "
+            "второй неоплаченный заказ",
+        )
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "У вас уже есть заказ в ожидании оплаты.",
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_create_order_insufficient_quantity(self):
+        self.garment.count = 1
+        self.garment.save()
+
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:create-order"),
+            {
+                "address": "Test Address",
+                "phone": "+79991234567",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при недостаточном количестве товара",
+        )
+        self.assertIn(
+            "Недостаточно товара",
+            str(response.data["errors"]["form_error"]),
+            "Неверное сообщение об ошибке",
+        )
+
+    def test_create_order_empty_cart(self):
+        self.cart_item.delete()
+
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:create-order"),
+            {
+                "address": "Test Address",
+                "phone": "+79991234567",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            http.HTTPStatus.BAD_REQUEST,
+            "Неверный код ответа при пустой корзине",
+        )
+        self.assertEqual(
+            response.data["errors"]["form_error"],
+            "Корзина пуста",
+            "Неверное сообщение об ошибке",
         )
