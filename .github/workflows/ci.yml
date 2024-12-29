@@ -36,6 +36,9 @@ jobs:
     - name: Run Django tests
       env:
         SECRET_KEY: Test
+        YOOKASSA_SHOP_ID: 1007827
+        YOOKASSA_SECRET_KEY: test_EODTi6XwnPQPfNCrdLqXPeb6A_NJzhuX32cUJ-Dfkms
+        SITE_URL: https://test.com
       run: |
         cd backend
         python manage.py test
