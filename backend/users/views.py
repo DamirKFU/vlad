@@ -1,15 +1,13 @@
 import django.conf
 import django.contrib.auth
-import django.contrib.messages
-import django.core.mail
 import django.core.signing
-import django.shortcuts
 import django.utils.timezone
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.status
 import rest_framework.views
 
+import core.tasks
 import core.utils
 import users.models
 import users.serializers
@@ -99,7 +97,7 @@ class PasswordResetRequestView(rest_framework.generics.GenericAPIView):
 
         reset_url = f"http://localhost:3000/reset-password/{token}"
 
-        django.core.mail.send_mail(
+        core.tasks.send_email_task.delay(
             subject="Сброс пароля",
             message="",
             html_message=django.template.loader.render_to_string(

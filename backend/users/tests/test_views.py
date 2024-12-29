@@ -271,7 +271,9 @@ class AuthTestCaseAdditional(django.test.TestCase):
 
 
 @django.test.override_settings(
-    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPAGATES=True,
 )
 class PasswordResetTestCase(django.test.TestCase):
     def setUp(self):

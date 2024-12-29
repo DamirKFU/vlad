@@ -59,4 +59,9 @@ urlpatterns = [
         catalog.views.OrderDetailView.as_view(),
         name="order-detail",
     ),
+    django.urls.path(
+        "task/<str:task_id>/",
+        catalog.views.TaskStatusView.as_view(),
+        name="task-status",
+    ),
 ]

@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
     "users.apps.UsersConfig",
     "payments.apps.PaymentsConfig",
+    "djcelery_email",
 ]
 
 MIDDLEWARE = [
@@ -131,8 +132,8 @@ EMAIL_HOST = "smtp.yandex.ru"
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 
-EMAIL_HOST_USER = "Damir.DeBug@yandex.ru"
-EMAIL_HOST_PASSWORD = "jzinmqpovhcrdsru"
+EMAIL_HOST_USER = "Damir.DeBugfdfd@yanfddex.rufdfd"
+EMAIL_HOST_PASSWORD = "orkvldbhzvgugdxo"
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 SERVER_EMAIL = EMAIL_HOST_USER
@@ -162,3 +163,6 @@ YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 SITE_URL = os.getenv("SITE_URL")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"

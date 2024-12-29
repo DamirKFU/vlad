@@ -8,3 +8,6 @@ pillow==10.2.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
 yookassa==3.4.3
+django-celery-email==3.0.0
+redis==5.0.3
+celery==5.3.6

@@ -1,6 +1,7 @@
 import rest_framework.serializers
 
 import catalog.models
+import catalog.tasks
 import catalog.utils
 import catalog.validators
 import payments.services
@@ -218,8 +219,8 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
     )
 
     def validate(self, data):
-        user = self.context["request"].user
-        cart = catalog.models.Cart.objects.get_cart_for_order(user=user)
+        user_id = self.context["user_id"]
+        cart = catalog.models.Cart.objects.get_cart_for_order(user_id=user_id)
 
         if cart is None:
             raise rest_framework.serializers.ValidationError(

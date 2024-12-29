@@ -62,3 +62,18 @@ class YooKassaService:
 
             if not hook_is_set:
                 yookassa.Webhook.add({"event": event, "url": webhook_url})
+
+    def cancel_payment(self, payment_id: str) -> dict:
+        response = yookassa.Payment.cancel(payment_id)
+        return {
+            "id": response.id,
+            "status": response.status,
+            "cancellation_details": (
+                {
+                    "party": response.cancellation_details.party,
+                    "reason": response.cancellation_details.reason,
+                }
+                if response.cancellation_details
+                else None
+            ),
+        }

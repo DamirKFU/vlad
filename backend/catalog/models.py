@@ -471,9 +471,9 @@ class CartManager(django.db.models.Manager):
             )
         )
 
-    def get_cart_for_order(self, user):
+    def get_cart_for_order(self, user_id):
         return (
-            self.filter(user=user)
+            self.filter(user_id=user_id)
             .select_related("user")
             .prefetch_related(
                 django.db.models.Prefetch(

@@ -1,3 +1,5 @@
+import celery.result
+import celery.states
 import django.db
 import django.shortcuts
 import rest_framework.decorators
@@ -11,6 +13,7 @@ import rest_framework.views
 import catalog.models
 import catalog.pagination
 import catalog.serializers
+import catalog.tasks
 import catalog.utils
 import core.utils
 
@@ -178,21 +181,14 @@ class CreateOrderView(rest_framework.generics.GenericAPIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
     serializer_class = catalog.serializers.CreateOrderSerializer
 
-    @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
-        serializer = catalog.serializers.CreateOrderSerializer(
-            data=request.data, context={"request": request}
+        task = catalog.tasks.create_order_task.delay(
+            data=request.data, user_id=request.user.id
         )
-        if not serializer.is_valid():
-            return core.utils.error_response(
-                serializer_errors=serializer.errors,
-                message="Ошибка валидации",
-            )
 
-        order = serializer.save()
         return core.utils.success_response(
-            data={"order_id": order.id},
-            message="Заказ успешно создан",
+            data={"task_id": task.id},
+            message="Задача создания заказа запущена",
             http_status=rest_framework.status.HTTP_201_CREATED,
         )
 
@@ -266,3 +262,29 @@ class OrderDetailView(rest_framework.views.APIView):
             data=serializer.data,
             message="Заказ успешно получен",
         )
+
+
+class TaskStatusView(rest_framework.views.APIView):
+    def get(self, request, task_id):
+        task = celery.result.AsyncResult(task_id)
+        if task.state == celery.states.PENDING and not task.task_id:
+            return core.utils.error_response(
+                message="Задача не найдена",
+                errors={"form_error": "task_id не найден"},
+                http_status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )
+
+        data = {
+            "status": task.state,
+            "result": (
+                task.get() if task.ready() and task.successful() else None
+            ),
+            "error": (
+                str(task.result)
+                if task.ready() and not task.successful()
+                else None
+            ),
+            "info": task.info,
+        }
+
+        return core.utils.success_response(data=data)
