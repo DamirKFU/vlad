@@ -13,10 +13,7 @@ def create_order_task(self, data, user_id):
     if not serializer.is_valid():
         self.update_state(
             state="FAILURE",
-            meta={
-                "message": "Ошибка валидации",
-                "errors": serializer.errors,
-            },
+            meta={},
         )
         return {
             "message": "Ошибка валидации",
