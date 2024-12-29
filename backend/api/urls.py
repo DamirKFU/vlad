@@ -13,9 +13,8 @@ urlpatterns = [
     ),
     django.urls.path(
         "catalog/",
-        django.urls.include(
-            "catalog.urls", namespace="catalog"
-        ),
+        django.urls.include("catalog.urls", "catalog"),
+        name="catalog",
     ),
     django.urls.path(
         "get-csrf-token/",
@@ -24,8 +23,7 @@ urlpatterns = [
     ),
     django.urls.path(
         "payments/",
-        django.urls.include(
-            "payments.urls", namespace="payments"
-        ),
+        django.urls.include("payments.urls", "payments"),
+        name="payments",
     ),
 ]
