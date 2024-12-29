@@ -74,6 +74,9 @@ const OrderDetail = () => {
                 <div className={`order-status status-${order.status}`}>
                     {order.status_display}
                 </div>
+                <div className={`payment-status payment-status-${order.payment_status}`}>
+                    {order.payment_status_display}
+                </div>
             </div>
 
             <div className="delivery-section">

@@ -3,7 +3,6 @@ import rest_framework.serializers
 import catalog.models
 import catalog.utils
 import catalog.validators
-import payments.models
 import payments.services
 
 
@@ -293,29 +292,22 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
             ]
         )
 
-        order.total_sum = sum(item.total_price for item in order_items)
-
-        order.save()
-
         catalog.models.OrderItem.objects.bulk_create(order_items)
         catalog.models.Garment.objects.bulk_update(
             garments,
             [catalog.models.Garment.count.field.name],
         )
-
+        order.total_sum = sum(item.total_price for item in order_items)
         yookassa_service = payments.services.YooKassaService()
         payment_data = yookassa_service.create_payment(
             order=order,
             return_url=f"http://localhost:3000/orders/{order.id}",
         )
 
-        payments.models.Payment.objects.create(
-            order=order,
-            payment_id=payment_data["id"],
-            status=payments.models.PaymentStatus.PENDING,
-            created_at=payment_data["created_at"],
-            confirmation_url=payment_data["confirmation_url"],
-        )
+        order.payment_id = payment_data["id"]
+        order.confirmation_url = payment_data["confirmation_url"]
+        order.payment_status = payment_data["status"]
+        order.save()
 
         return order
 
@@ -366,6 +358,8 @@ class OrderSerializer(rest_framework.serializers.ModelSerializer):
             "status",
             "status_display",
             "address",
+            "created_at",
+            "total_sum",
             "items",
         ]
 
@@ -471,31 +465,27 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
         ]
 
     def to_representation(self, instance):
-        # Проверяем статус платежа перед сериализацией
         status_payment = (
             payments.services.YooKassaService().get_status_payment(
-                instance.payment.payment_id
+                instance.payment_id
             )
         )
-        current_status = instance.payment.status
+        current_status = instance.payment_status
         if status_payment != current_status:
-            instance.payment.status = status_payment
-            instance.payment.save()
-            if status_payment == payments.models.PaymentStatus.SUCCEEDED:
-                instance.status = catalog.models.OrderStatus.IN_WORK
+            instance.payment_status = status_payment
+            instance.save()
+            if status_payment == catalog.models.PaymentStatus.SUCCEEDED:
+                instance.status = catalog.models.OrderStatus.PAID
                 instance.save()
 
-            if status_payment == payments.models.PaymentStatus.CANCELED:
+            if status_payment == catalog.models.PaymentStatus.CANCELED:
                 instance.status = catalog.models.OrderStatus.CANCELED
                 instance.save()
-        # Получаем свежие данные из базы
+
         return super().to_representation(instance)
 
     def get_confirmation_url(self, obj):
-        if (
-            obj.status == catalog.models.OrderStatus.WAITING_PAYMENT
-            and hasattr(obj, "payment")
-        ):
-            return obj.payment.confirmation_url
+        if obj.status == catalog.models.OrderStatus.WAITING_PAYMENT:
+            return obj.confirmation_url
 
         return None

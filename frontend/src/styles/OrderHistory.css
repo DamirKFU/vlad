@@ -231,4 +231,18 @@
 
 .address-value {
     color: #212529;
+}
+
+.order-statuses {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.order-status,
+.payment-status {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
 } 

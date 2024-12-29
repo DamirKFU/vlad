@@ -4,7 +4,6 @@ import rest_framework.status
 import rest_framework.views
 
 import catalog.models
-import payments.models
 
 
 class YooKassaWebhookView(rest_framework.views.APIView):
@@ -14,23 +13,27 @@ class YooKassaWebhookView(rest_framework.views.APIView):
 
         try:
             event_json = request.data
-            payment = payments.models.Payment.objects.select_related(
-                "order"
-            ).get(payment_id=event_json["object"]["id"])
+            order = catalog.models.Order.objects.get(
+                payment_id=event_json["object"]["id"],
+            )
 
             if event_json["event"] == "payment.succeeded":
                 with django.db.transaction.atomic():
-                    payment.status = payments.models.PaymentStatus.SUCCEEDED
-                    payment.save()
-                    payment.order.status = catalog.models.OrderStatus.PAID
-                    payment.order.save()
+                    order.payment_status = (
+                        catalog.models.PaymentStatus.SUCCEEDED
+                    )
+                    order.save()
+                    order.status = catalog.models.OrderStatus.PAID
+                    order.save()
 
             elif event_json["event"] == "payment.canceled":
                 with django.db.transaction.atomic():
-                    payment.status = payments.models.PaymentStatus.CANCELED
-                    payment.save()
-                    payment.order.status = catalog.models.OrderStatus.CANCELED
-                    payment.order.save()
+                    order.payment_status = (
+                        catalog.models.PaymentStatus.CANCELED
+                    )
+                    order.save()
+                    order.status = catalog.models.OrderStatus.CANCELED
+                    order.save()
 
             return rest_framework.response.Response(
                 {"status": "success"},

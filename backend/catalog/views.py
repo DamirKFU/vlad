@@ -242,7 +242,7 @@ class OrderDetailView(rest_framework.views.APIView):
     @django.db.transaction.atomic
     def get(self, request, order_id, *args, **kwargs):
         order = (
-            catalog.models.Order.objects.get_orders_with_items_and_payment(
+            catalog.models.Order.objects.get_orders_for_detail(
                 user=request.user,
             )
             .filter(

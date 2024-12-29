@@ -82,6 +82,9 @@ const OrderHistory = () => {
                                         <span className={`status-badge status-${order.status}`}>
                                             {order.status_display}
                                         </span>
+                                        <span className={`status-badge payment-status-${order.payment_status}`}>
+                                            {order.payment_status_display}
+                                        </span>
                                         {order.status === 'WP' && (
                                             <button 
                                                 className="cancel-order-btn"

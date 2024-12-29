@@ -526,7 +526,19 @@ class OrderStatus(django.db.models.TextChoices):
     CANCELED = "CN", "Отменён"
 
 
+class PaymentStatus(django.db.models.TextChoices):
+    PENDING = "pending", "В ожидании"
+    SUCCEEDED = "succeeded", "Успешно"
+    CANCELED = "canceled", "Отменён"
+
+
 class OrderManager(django.db.models.Manager):
+    def delete(self, *args, **kwargs):
+        raise Exception("Orders cannot be deleted, use cancel_order() instead")
+
+    def bulk_delete(self, *args, **kwargs):
+        raise Exception("Orders cannot be deleted, use cancel_order() instead")
+
     def get_orders_with_items(self, user):
         image_subquery = (
             ProductAdditionalImage.objects.filter(
@@ -565,10 +577,32 @@ class OrderManager(django.db.models.Manager):
                     ),
                 ),
             )
+            .only(
+                "id",
+                "status",
+                "items",
+                "address",
+                "total_sum",
+                "user__id",
+                "created_at",
+            )
         )
 
-    def get_orders_with_items_and_payment(self, user):
-        return self.get_orders_with_items(user).select_related("payment")
+    def get_orders_for_detail(self, user):
+        return self.get_orders_with_items(user).only(
+            "id",
+            "status",
+            "items",
+            "address",
+            "phone",
+            "total_sum",
+            "user__id",
+            "user__email",
+            "payment_status",
+            "confirmation_url",
+            "payment_id",
+            "created_at",
+        )
 
 
 class Order(django.db.models.Model):
@@ -618,7 +652,26 @@ class Order(django.db.models.Model):
         ],
         default=0,
     )
-    phone = django.db.models.CharField(max_length=16, null=True, blank=True)
+    payment_id = django.db.models.CharField(
+        "идентификатор платежа",
+        help_text="идентификатор платежа в платежной системе",
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+    payment_status = django.db.models.CharField(
+        "статус платежа",
+        help_text="статус платежа в платежной системе",
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+    )
+    confirmation_url = django.db.models.URLField(
+        "url для подтверждения платежа",
+        help_text="url для подтверждения платежа",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         verbose_name = "заказ"
@@ -636,14 +689,12 @@ class Order(django.db.models.Model):
 
     def cancel_order(self):
         if self.status == OrderStatus.WAITING_PAYMENT:
-            if hasattr(self, "payment"):
-                self.payment.cancel()
-
             for order_item in self.items.select_related("garment").all():
                 order_item.garment.count += order_item.quantity
                 order_item.garment.save()
 
             self.status = OrderStatus.CANCELED
+            self.payment_status = PaymentStatus.CANCELED
             self.save()
 
     def delete(self, *args, **kwargs):
