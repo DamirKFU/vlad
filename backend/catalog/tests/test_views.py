@@ -11,8 +11,9 @@ import PIL
 import rest_framework.test
 
 import catalog.models
-import users.models
 import catalog.tasks
+import users.models
+
 
 MEDIA_ROOT = tempfile.mkdtemp()
 
