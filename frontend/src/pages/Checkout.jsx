@@ -53,7 +53,7 @@ const Checkout = () => {
       });
       
       if (response.status === 201) {
-        navigate('/orders');
+        navigate(`/orders/${response.data.data.order_id}`);
       }
     } catch (err) {
       const errorMessage = err.response?.data?.errors?.form_error 

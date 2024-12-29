@@ -3,6 +3,8 @@ import rest_framework.serializers
 import catalog.models
 import catalog.utils
 import catalog.validators
+import payments.models
+import payments.services
 
 
 class ConstructorProductCreateSerializer(
@@ -291,10 +293,28 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
             ]
         )
 
+        order.total_sum = sum(item.total_price for item in order_items)
+
+        order.save()
+
         catalog.models.OrderItem.objects.bulk_create(order_items)
         catalog.models.Garment.objects.bulk_update(
             garments,
             [catalog.models.Garment.count.field.name],
+        )
+
+        yookassa_service = payments.services.YooKassaService()
+        payment_data = yookassa_service.create_payment(
+            order=order,
+            return_url=f"http://localhost:3000/orders/{order.id}",
+        )
+
+        payments.models.Payment.objects.create(
+            order=order,
+            payment_id=payment_data["id"],
+            status=payments.models.PaymentStatus.PENDING,
+            created_at=payment_data["created_at"],
+            confirmation_url=payment_data["confirmation_url"],
         )
 
         return order
@@ -428,3 +448,54 @@ class CancelOrderSerializer(rest_framework.serializers.Serializer):
         order = validated_data["order"]
         order.cancel_order()
         return order
+
+
+class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    status_display = rest_framework.serializers.CharField(
+        source="get_status_display"
+    )
+    confirmation_url = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = catalog.models.Order
+        fields = [
+            "id",
+            "status",
+            "status_display",
+            "address",
+            "phone",
+            "total_sum",
+            "items",
+            "confirmation_url",
+        ]
+
+    def to_representation(self, instance):
+        # Проверяем статус платежа перед сериализацией
+        status_payment = (
+            payments.services.YooKassaService().get_status_payment(
+                instance.payment.payment_id
+            )
+        )
+        current_status = instance.payment.status
+        if status_payment != current_status:
+            instance.payment.status = status_payment
+            instance.payment.save()
+            if status_payment == payments.models.PaymentStatus.SUCCEEDED:
+                instance.status = catalog.models.OrderStatus.IN_WORK
+                instance.save()
+
+            if status_payment == payments.models.PaymentStatus.CANCELED:
+                instance.status = catalog.models.OrderStatus.CANCELED
+                instance.save()
+        # Получаем свежие данные из базы
+        return super().to_representation(instance)
+
+    def get_confirmation_url(self, obj):
+        if (
+            obj.status == catalog.models.OrderStatus.WAITING_PAYMENT
+            and hasattr(obj, "payment")
+        ):
+            return obj.payment.confirmation_url
+
+        return None

@@ -13,12 +13,19 @@ urlpatterns = [
     ),
     django.urls.path(
         "catalog/",
-        django.urls.include("catalog.urls", "catalog"),
-        name="catalog",
+        django.urls.include(
+            "catalog.urls", namespace="catalog"
+        ),
     ),
     django.urls.path(
         "get-csrf-token/",
         api.views.GetCSRFTokenView.as_view(),
         name="get-csrf-token",
+    ),
+    django.urls.path(
+        "payments/",
+        django.urls.include(
+            "payments.urls", namespace="payments"
+        ),
     ),
 ]

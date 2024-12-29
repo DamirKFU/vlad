@@ -1,5 +1,5 @@
 [flake8]
-application_import_names = api, catalog, users, bakcend, core
+application_import_names = api, catalog, users, payments, bakcend, core
 import-order-style = google
 inline-quotes = double
 max-expression-complexity=8

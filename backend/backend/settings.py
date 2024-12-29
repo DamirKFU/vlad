@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "api.apps.ApiConfig",
     "catalog.apps.CatalogConfig",
     "users.apps.UsersConfig",
+    "payments.apps.PaymentsConfig",
 ]
 
 MIDDLEWARE = [
@@ -153,3 +154,11 @@ STATIC_URL = "static/django/"
 STATIC_ROOT = "../staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
+YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
+
+
+SITE_URL = os.getenv("SITE_URL")
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

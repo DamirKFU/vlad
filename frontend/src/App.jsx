@@ -15,6 +15,7 @@ import api from "./api";
 import Cart from './pages/Cart';
 import OrderHistory from './pages/OrderHistory';
 import Checkout from './pages/Checkout';
+import OrderDetail from './pages/OrderDetail';
 
 
 function Logout() {
@@ -52,6 +53,7 @@ function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/orders" element={<OrderHistory />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/orders/:orderId" element={<OrderDetail />} />
         </Routes>
       </BrowserRouter>
   )

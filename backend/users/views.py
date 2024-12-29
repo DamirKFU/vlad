@@ -7,7 +7,6 @@ import django.shortcuts
 import django.utils.timezone
 import rest_framework.generics
 import rest_framework.permissions
-import rest_framework.response
 import rest_framework.status
 import rest_framework.views
 
@@ -34,34 +33,6 @@ class CrateUserView(rest_framework.generics.CreateAPIView):
         return core.utils.success_response(
             message="Регистрация успешно завершена",
             http_status=rest_framework.status.HTTP_201_CREATED,
-        )
-
-
-class VerifedEmailTokenView(rest_framework.views.APIView):
-    permission_classes = [rest_framework.permissions.IsAuthenticated]
-
-    def post(self, request):
-        token_user_email = request.user.email
-        exp = django.utils.timezone.datetime.now().toordinal()
-        token = django.core.signing.dumps(
-            {
-                "exp": exp,
-                "user_id": request.user.id,
-            }
-        )
-        django.core.mail.send_mail(
-            subject="Activate your account",
-            message=django.template.loader.render_to_string(
-                "verifed_email.html",
-                {"token": token},
-            ),
-            from_email=django.conf.settings.EMAIL_ADMIN,
-            recipient_list=[token_user_email],
-        )
-
-        return core.utils.success_response(
-            message="Письмо с подтверждением отправлено",
-            http_status=rest_framework.status.HTTP_200_OK,
         )
 
 

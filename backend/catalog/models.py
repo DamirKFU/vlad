@@ -519,7 +519,8 @@ class CartItem(django.db.models.Model):
 
 class OrderStatus(django.db.models.TextChoices):
     WAITING_PAYMENT = "WP", "Ожидает оплаты"
-    PAID = "PD", "Оплачен"
+    PAID = "PD", "В разработке"
+    IN_WORK = "IW", "На шитье"
     IN_DELIVERY = "ID", "В доставке"
     DELIVERED = "DV", "Доставлен"
     CANCELED = "CN", "Отменён"
@@ -566,6 +567,9 @@ class OrderManager(django.db.models.Manager):
             )
         )
 
+    def get_orders_with_items_and_payment(self, user):
+        return self.get_orders_with_items(user).select_related("payment")
+
 
 class Order(django.db.models.Model):
     objects = OrderManager()
@@ -606,6 +610,14 @@ class Order(django.db.models.Model):
             catalog.validators.validate_russian_phone,
         ],
     )
+    total_sum = django.db.models.PositiveIntegerField(
+        "сумма заказа",
+        help_text="сумма заказа",
+        validators=[
+            django.core.validators.MinValueValidator(0),
+        ],
+        default=0,
+    )
     phone = django.db.models.CharField(max_length=16, null=True, blank=True)
 
     class Meta:
@@ -624,6 +636,9 @@ class Order(django.db.models.Model):
 
     def cancel_order(self):
         if self.status == OrderStatus.WAITING_PAYMENT:
+            if hasattr(self, "payment"):
+                self.payment.cancel()
+
             for order_item in self.items.select_related("garment").all():
                 order_item.garment.count += order_item.quantity
                 order_item.garment.save()

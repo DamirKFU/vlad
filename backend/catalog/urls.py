@@ -54,4 +54,9 @@ urlpatterns = [
         catalog.views.OrderHistoryView.as_view(),
         name="order-history",
     ),
+    django.urls.path(
+        "orders/<int:order_id>/",
+        catalog.views.OrderDetailView.as_view(),
+        name="order-detail",
+    ),
 ]

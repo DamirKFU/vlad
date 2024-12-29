@@ -191,7 +191,7 @@ class CreateOrderView(rest_framework.generics.GenericAPIView):
 
         order = serializer.save()
         return core.utils.success_response(
-            data={"order_id": order.id, "status": order.status},
+            data={"order_id": order.id},
             message="Заказ успешно создан",
             http_status=rest_framework.status.HTTP_201_CREATED,
         )
@@ -233,4 +233,36 @@ class OrderHistoryView(rest_framework.generics.ListAPIView):
         serializer.save()
         return core.utils.success_response(
             message="Заказ успешно отменен",
+        )
+
+
+class OrderDetailView(rest_framework.views.APIView):
+    permission_classes = (rest_framework.permissions.IsAuthenticated,)
+
+    @django.db.transaction.atomic
+    def get(self, request, order_id, *args, **kwargs):
+        order = (
+            catalog.models.Order.objects.get_orders_with_items_and_payment(
+                user=request.user,
+            )
+            .filter(
+                id=order_id,
+            )
+            .first()
+        )
+
+        if not order:
+            return core.utils.error_response(
+                message="Заказ не найден",
+                http_status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = catalog.serializers.OrderDetailSerializer(
+            order,
+            context={"request": request},
+        )
+
+        return core.utils.success_response(
+            data=serializer.data,
+            message="Заказ успешно получен",
         )

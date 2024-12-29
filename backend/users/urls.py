@@ -31,11 +31,6 @@ urlpatterns = [
         name="is_auth",
     ),
     django.urls.path(
-        "verifed-email/",
-        users.views.VerifedEmailTokenView.as_view(),
-        name="verifed_email",
-    ),
-    django.urls.path(
         "password/reset/",
         users.views.PasswordResetRequestView.as_view(),
         name="password_reset_request",
