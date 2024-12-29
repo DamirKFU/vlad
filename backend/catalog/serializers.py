@@ -99,23 +99,14 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
 
     def validate(self, data):
         errors = {}
-        product = (
-            catalog.models.Product.objects.filter(id=data["id_product"])
-            .only(
-                "name",
-                "price",
-            )
-            .first()
+        product = catalog.models.Product.objects.get_product_for_cart(
+            data["id_product"]
         )
         if not product:
             errors["id_product"] = "Продукт не найден"
 
-        garment = (
-            catalog.models.Garment.objects.filter(id=data["id_garment"])
-            .only(
-                "price",
-            )
-            .first()
+        garment = catalog.models.Garment.objects.get_garment_for_cart(
+            data["id_garment"]
         )
         if not garment:
             errors["id_garment"] = "Одежда не найдена"
@@ -123,10 +114,8 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
         if errors:
             raise rest_framework.serializers.ValidationError(errors)
 
-        if (
-            not product.garments.values_list("id", flat=True)
-            .filter(id=garment.id)
-            .exists()
+        if not catalog.models.Product.objects.check_garment_belongs_to_product(
+            data["id_product"], data["id_garment"]
         ):
             raise rest_framework.serializers.ValidationError(
                 {"form_error": "Данная одежда не принадлежит этому товару"}
@@ -375,22 +364,9 @@ class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
     )
 
     def validate(self, data):
-        cart_item = (
-            catalog.models.CartItem.objects.select_related(
-                "garment",
-                "product",
-            )
-            .filter(
-                cart__user=self.context["request"].user,
-                id=data["item_id"],
-            )
-            .only(
-                "quantity",
-                "garment__count",
-                "garment__price",
-                "product__price",
-            )
-            .first()
+        cart_item = catalog.models.CartItem.objects.get_cart_item_for_update(
+            user=self.context["request"].user,
+            item_id=data["item_id"],
         )
 
         if not cart_item:

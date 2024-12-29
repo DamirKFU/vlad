@@ -103,6 +103,23 @@ class Color(AbstractModel):
         verbose_name_plural = "цвета"
 
 
+class ProductManager(django.db.models.Manager):
+    def get_product_for_cart(self, product_id):
+        return (
+            self.filter(id=product_id)
+            .only(
+                "name",
+                "price",
+            )
+            .first()
+        )
+
+    def check_garment_belongs_to_product(self, product_id, garment_id):
+        return (
+            self.filter(id=product_id).filter(garments__id=garment_id).exists()
+        )
+
+
 class GarmentManager(django.db.models.Manager):
     def all_items(self):
         queryset = (
@@ -128,6 +145,15 @@ class GarmentManager(django.db.models.Manager):
 
     def items_by_product_detail(self, product):
         return self.all_items().filter(products=product)
+
+    def get_garment_for_cart(self, garment_id):
+        return (
+            self.filter(id=garment_id)
+            .only(
+                "price",
+            )
+            .first()
+        )
 
 
 class Garment(django.db.models.Model):
@@ -248,7 +274,7 @@ class ConstructorEmbroideryImage(BaseImage):
 
 
 class Product(AbstractModel):
-
+    objects = ProductManager()
     price = django.db.models.PositiveIntegerField(
         "цена",
         help_text="цена товара",
@@ -478,7 +504,30 @@ class Cart(django.db.models.Model):
         verbose_name_plural = "корзины"
 
 
+class CartItemManager(django.db.models.Manager):
+    def get_cart_item_for_update(self, user, item_id):
+        return (
+            self.select_related(
+                "garment",
+                "product",
+            )
+            .filter(
+                cart__user=user,
+                id=item_id,
+            )
+            .only(
+                "quantity",
+                "garment__count",
+                "garment__price",
+                "product__price",
+            )
+            .first()
+        )
+
+
 class CartItem(django.db.models.Model):
+    objects = CartItemManager()
+
     cart = django.db.models.ForeignKey(
         Cart,
         verbose_name="корзина",
