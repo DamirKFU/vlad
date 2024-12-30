@@ -1,5 +1,6 @@
 import celery
 import django.db
+import django.utils
 
 import catalog.serializers
 
@@ -16,11 +17,11 @@ def create_order_task_sync(self, data, user_id):
 
     try:
         order = serializer.save()
-    except django.core.exceptions.ValidationError:
+    except django.db.utils.Error as exc:
         django.db.transaction.set_rollback(True)
         return {
             "message": "Ошибка создания заказа",
-            "errors": {"count": "Недостаточно товара"},
+            "errors": {"form_error": str(exc)},
         }
 
     return {
