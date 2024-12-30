@@ -48,7 +48,7 @@ jobs:
         flake8 --verbose .
         black --check --verbose -- .
 
-    - name: Run Django tests --keepdb
+    - name: Run Django tests
       env:
         SECRET_KEY: Test
         YOOKASSA_SHOP_ID: 1007827
@@ -56,7 +56,7 @@ jobs:
         SITE_URL: https://test.com
       run: |
         cd backend
-        python manage.py test
+        python manage.py test --keepdb
 
     - name: Set up Node.js
       uses: actions/setup-node@v2
