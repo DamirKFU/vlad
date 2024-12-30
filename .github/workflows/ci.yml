@@ -53,6 +53,8 @@ jobs:
         SECRET_KEY: Test
         YOOKASSA_SHOP_ID: ${{ secrets.YOOKASSA_SHOP_ID }}
         YOOKASSA_SECRET_KEY: ${{ secrets.YOOKASSA_SECRET_KEY }}
+        EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+        EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
         SITE_URL: https://test.com
       run: |
         cd backend
