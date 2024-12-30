@@ -12,6 +12,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: myprojectuser
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: myproject
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -33,7 +48,7 @@ jobs:
         flake8 --verbose .
         black --check --verbose -- .
 
-    - name: Run Django tests
+    - name: Run Django tests --keepdb
       env:
         SECRET_KEY: Test
         YOOKASSA_SHOP_ID: 1007827

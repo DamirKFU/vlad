@@ -244,7 +244,7 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
             garment = cart_item.garment
             if garment.count < cart_item.quantity:
                 raise rest_framework.serializers.ValidationError(
-                    {"form_error": f"Недостаточно товара для {cart_item.id}"}
+                    {"count": "Недостаточно товара"}
                 )
 
         data["cart"] = cart

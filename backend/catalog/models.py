@@ -480,8 +480,11 @@ class CartManager(django.db.models.Manager):
                     "items",
                     queryset=CartItem.objects.select_related(
                         "product",
+                    )
+                    .select_related(
                         "garment",
-                    ),
+                    )
+                    .select_for_update(),
                 ),
             )
             .first()

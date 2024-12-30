@@ -1,31 +1,45 @@
 import celery
 import django.db
 
-import catalog.models
+import catalog.serializers
 
 
-@celery.shared_task(bind=True)
-@django.db.transaction.atomic
-def create_order_task(self, data, user_id):
+def create_order_task_sync(self, data, user_id):
     serializer = catalog.serializers.CreateOrderSerializer(
         data=data, context={"user_id": user_id}
     )
     if not serializer.is_valid():
-        self.update_state(
-            state="FAILURE",
-            meta={},
-        )
         return {
             "message": "Ошибка валидации",
             "errors": serializer.errors,
         }
 
-    order = serializer.save()
-    self.update_state(
-        state="SUCCESS",
-        meta={"order_id": order.id},
-    )
+    try:
+        order = serializer.save()
+    except django.core.exceptions.ValidationError:
+        django.db.transaction.set_rollback(True)
+        return {
+            "message": "Ошибка создания заказа",
+            "errors": {"count": "Недостаточно товара"},
+        }
+
     return {
         "data": {"order_id": order.id},
         "message": "Заказ успешно создан",
     }
+
+
+@celery.shared_task(bind=True)
+@django.db.transaction.atomic
+def create_order_task(self, data, user_id):
+    result = create_order_task_sync(self, data, user_id)
+
+    if "errors" in result:
+        self.update_state(state="FAILURE", meta=result)
+        return result
+
+    self.update_state(
+        state="SUCCESS",
+        meta={"order_id": result["data"]["order_id"]},
+    )
+    return result
