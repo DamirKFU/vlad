@@ -158,6 +158,7 @@ cython_debug/
 
 # vscode
 .vscode/
+.VSCodeCounter/
 
 # chache
 cache/
