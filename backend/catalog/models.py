@@ -1,4 +1,4 @@
-from pathlib import Path
+import pathlib
 import uuid
 
 import django.core.validators
@@ -11,8 +11,13 @@ import users.models
 
 
 def get_path_image(instance, filename):
-    ext = Path(filename).suffix
-    return f"catalog/{uuid.uuid4()}{ext}"
+    ext = pathlib.Path(filename).suffix
+    return f"catalog/image/{uuid.uuid4()}{ext}"
+
+
+def get_path_file(instance, filename):
+    ext = pathlib.Path(filename).suffix
+    return f"catalog/file/{uuid.uuid4()}{ext}"
 
 
 class Size(django.db.models.TextChoices):
@@ -62,7 +67,7 @@ class BaseImage(django.db.models.Model):
         abstract = True
 
     def __str__(self):
-        return Path(self.image.path).stem
+        return pathlib.Path(self.image.path).stem
 
 
 class AbstractModel(django.db.models.Model):
@@ -101,23 +106,6 @@ class Color(AbstractModel):
     class Meta:
         verbose_name = "цвет"
         verbose_name_plural = "цвета"
-
-
-class ProductManager(django.db.models.Manager):
-    def get_product_for_cart(self, product_id):
-        return (
-            self.filter(id=product_id)
-            .only(
-                "name",
-                "price",
-            )
-            .first()
-        )
-
-    def check_garment_belongs_to_product(self, product_id, garment_id):
-        return (
-            self.filter(id=product_id).filter(garments__id=garment_id).exists()
-        )
 
 
 class GarmentManager(django.db.models.Manager):
@@ -273,6 +261,23 @@ class ConstructorEmbroideryImage(BaseImage):
         verbose_name_plural = "изображения вышивки"
 
 
+class ProductManager(django.db.models.Manager):
+    def get_product_for_cart(self, product_id):
+        return (
+            self.filter(id=product_id)
+            .only(
+                "name",
+                "price",
+            )
+            .first()
+        )
+
+    def check_garment_belongs_to_product(self, product_id, garment_id):
+        return (
+            self.filter(id=product_id).filter(garments__id=garment_id).exists()
+        )
+
+
 class Product(AbstractModel):
     objects = ProductManager()
     price = django.db.models.PositiveIntegerField(
@@ -294,6 +299,41 @@ class Product(AbstractModel):
 
     def __str__(self):
         return f"Товар({self.name})"
+
+
+class ProductEmbroideryFile(django.db.models.Model):
+    product = django.db.models.ForeignKey(
+        Product,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="товар",
+        help_text="товар файла вышивки",
+        related_name="embroidery_file",
+        related_query_name="embroidery_file",
+    )
+    embroidery = django.db.models.FileField(
+        upload_to=get_path_file,
+        validators=[
+            django.core.validators.FileExtensionValidator(
+                ["jef", "emb", "dst"]
+            )
+        ],
+        verbose_name="файл вышивки",
+        help_text="файл вышивки товара",
+    )
+    category = django.db.models.ForeignKey(
+        Category,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="категория",
+        help_text="категория файла вышивки",
+    )
+
+    class Meta:
+        verbose_name = "файл вышивки"
+        verbose_name_plural = "файлы вышивки"
+        unique_together = (
+            "product",
+            "category",
+        )
 
 
 class ProductImage(BaseImage):
@@ -573,6 +613,7 @@ class OrderStatus(django.db.models.TextChoices):
     WAITING_PAYMENT = "WP", "Ожидает оплаты"
     PAID = "PD", "В разработке"
     IN_WORK = "IW", "На шитье"
+    DRAFT = "DR", "Собирается"
     IN_DELIVERY = "ID", "В доставке"
     DELIVERED = "DV", "Доставлен"
     CANCELED = "CN", "Отменён"
@@ -656,6 +697,126 @@ class OrderManager(django.db.models.Manager):
             "created_at",
         )
 
+    def get_orders_for_staff(self, status):
+        return (
+            self.select_related("user")
+            .filter(status=status)
+            .order_by("-created_at")
+        )
+
+    def get_in_work_order_detail(self, order_id):
+        subquery = ProductEmbroideryFile.objects.filter(
+            category=django.db.models.OuterRef("garment__category_id")
+        ).values("embroidery")[:1]
+        return (
+            self.filter(id=order_id)
+            .select_related("user")
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.select_related(
+                        "product",
+                        "garment__category",
+                        "garment__color",
+                        "product__image",
+                    )
+                    .annotate(embroidery=django.db.models.Subquery(subquery))
+                    .only(
+                        "garment__category__name",
+                        "order__id",
+                        "product__name",
+                        "product__image__image",
+                        "garment__color__color",
+                        "garment__size",
+                        "quantity",
+                    ),
+                )
+            )
+            .only(
+                "id",
+                "status",
+                "items",
+                "user__email",
+                "tracking_code",
+            )
+        ).first()
+
+    def get_paid_order_detail(self, order_id):
+        subquery = django.db.models.Subquery(
+            ProductEmbroideryFile.objects.filter(
+                product=django.db.models.OuterRef("product"),
+                category=django.db.models.OuterRef("garment__category"),
+            ).values("embroidery")[:1]
+        )
+        return (
+            self.filter(id=order_id)
+            .select_related("user")
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.select_related(
+                        "product",
+                        "product__image",
+                        "garment__category",
+                        "garment__color",
+                    )
+                    .distinct("product_id", "garment__category")
+                    .annotate(
+                        embroidery=subquery,
+                    )
+                    .only(
+                        "garment__category__name",
+                        "order__id",
+                        "product__name",
+                        "product__id",
+                        "product__image__image",
+                        "garment__color__color",
+                        "garment__size",
+                        "quantity",
+                    ),
+                )
+            )
+            .only(
+                "id",
+                "status",
+                "items",
+                "user__email",
+            )
+        ).first()
+
+    def get_draft_order_detail(self, order_id):
+        return (
+            self.filter(id=order_id)
+            .select_related("user")
+            .only(
+                "id",
+                "status",
+                "items",
+                "user__email",
+                "tracking_code",
+            )
+            .first()
+        )
+
+    def get_in_delivery_order_detail(self, order_id):
+        return self.get_delivered_order_detail(order_id)
+
+    def get_delivered_order_detail(self, order_id):
+        return (
+            self.filter(id=order_id)
+            .select_related("user")
+            .only(
+                "id",
+                "status",
+                "items",
+                "user__email",
+            )
+            .first()
+        )
+
+    def get_order_status(self, order_id):
+        return self.filter(id=order_id).only("status").first()
+
 
 class Order(django.db.models.Model):
     objects = OrderManager()
@@ -690,7 +851,7 @@ class Order(django.db.models.Model):
     )
     phone = django.db.models.CharField(
         "номер телефона",
-        max_length=15,
+        max_length=18,
         help_text="номер телефона пользователя",
         validators=[
             catalog.validators.validate_russian_phone,
@@ -723,6 +884,14 @@ class Order(django.db.models.Model):
         help_text="url для подтверждения платежа",
         blank=True,
         null=True,
+    )
+
+    tracking_code = django.db.models.CharField(
+        "код отслеживания",
+        max_length=255,
+        help_text="код отслеживания товара",
+        null=True,
+        blank=True,
     )
 
     class Meta:

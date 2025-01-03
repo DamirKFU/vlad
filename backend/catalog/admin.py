@@ -38,6 +38,12 @@ class ProductAdditionalImageInline(
     extra = 1
 
 
+class ProductEmbroideryFileInline(django.contrib.admin.TabularInline):
+    fields = ["embroidery", "category"]
+    model = catalog.models.ProductEmbroideryFile
+    extra = 1
+
+
 @django.contrib.admin.register(catalog.models.Category)
 class CategoryAdmin(django.contrib.admin.ModelAdmin):
     list_display = (catalog.models.Category.name.field.name,)
@@ -91,4 +97,5 @@ class ProductAdmin(django.contrib.admin.ModelAdmin):
     inlines = [
         ProductImageInline,
         ProductAdditionalImageInline,
+        ProductEmbroideryFileInline,
     ]

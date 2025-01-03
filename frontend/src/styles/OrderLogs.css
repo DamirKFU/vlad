@@ -1,0 +1,111 @@
+.order-logs {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.order-logs h3 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.logs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.log-item {
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #3498db;
+}
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.log-user {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.log-date {
+    color: #6c757d;
+}
+
+.log-status-change {
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.log-comment {
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.logs-loading {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+}
+
+.logs-error {
+    text-align: center;
+    padding: 20px;
+    color: #dc3545;
+}
+
+.no-logs {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.pagination-button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.pagination-button:hover:not(:disabled) {
+    background: #0056b3;
+}
+
+.pagination-button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    color: #6c757d;
+    font-size: 14px;
+} 

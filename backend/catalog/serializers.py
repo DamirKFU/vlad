@@ -442,22 +442,24 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
         ]
 
     def to_representation(self, instance):
+        status = instance.status
+        if status != catalog.models.OrderStatus.WAITING_PAYMENT:
+            return super().to_representation(instance)
+
         status_payment = (
             payments.services.YooKassaService().get_status_payment(
                 instance.payment_id
             )
         )
-        current_status = instance.payment_status
-        if status_payment != current_status:
-            instance.payment_status = status_payment
+        instance.payment_status = status_payment
+        instance.save()
+        if status_payment == catalog.models.PaymentStatus.SUCCEEDED:
+            instance.status = catalog.models.OrderStatus.IN_WORK
             instance.save()
-            if status_payment == catalog.models.PaymentStatus.SUCCEEDED:
-                instance.status = catalog.models.OrderStatus.PAID
-                instance.save()
 
-            if status_payment == catalog.models.PaymentStatus.CANCELED:
-                instance.status = catalog.models.OrderStatus.CANCELED
-                instance.save()
+        if status_payment == catalog.models.PaymentStatus.CANCELED:
+            instance.status = catalog.models.OrderStatus.CANCELED
+            instance.save()
 
         return super().to_representation(instance)
 

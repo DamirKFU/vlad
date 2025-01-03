@@ -48,10 +48,13 @@ class TestCreateOrderTask(django.test.TransactionTestCase):
     def test_concurrent_order_creation(self):
         def side_effect():
             fake_self = FakeSelf()
-            with django.db.transaction.atomic():
-                return catalog.tasks.create_order_task_sync(
-                    fake_self, self.order_data, self.user.id
-                )
+            try:
+                with django.db.transaction.atomic():
+                    return catalog.tasks.create_order_task_sync(
+                        fake_self, self.order_data, self.user.id
+                    )
+            finally:
+                django.db.connections.close_all()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             futures = [executor.submit(side_effect) for _ in range(2)]
@@ -62,7 +65,7 @@ class TestCreateOrderTask(django.test.TransactionTestCase):
         success_count = sum(
             1 for r in results if "data" in r and "order_id" in r["data"]
         )
-        error_count = sum(1 for r in results if "errors" in r)
+        error_count = sum(1 for r in results if "data" not in r)
 
         self.assertEqual(
             success_count, 1, "Должен быть создан ровно один заказ"
@@ -71,7 +74,6 @@ class TestCreateOrderTask(django.test.TransactionTestCase):
 
         self.garment.refresh_from_db()
         self.assertGreaterEqual(self.garment.count, 0)
-
         orders = catalog.models.Order.objects.filter(user=self.user)
         self.assertEqual(orders.count(), 1)
 

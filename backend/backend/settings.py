@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     "catalog.apps.CatalogConfig",
     "users.apps.UsersConfig",
     "payments.apps.PaymentsConfig",
+    "staff.apps.StaffConfig",
+    "core.apps.CoreConfig",
 ]
 
 MIDDLEWARE = [

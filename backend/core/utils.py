@@ -1,3 +1,5 @@
+import django.conf
+import django.db
 import rest_framework.response
 import rest_framework.status
 
@@ -10,8 +12,22 @@ def success_response(
     if data is None:
         data = {}
 
+    response_data = {"data": data, "message": message}
+
+    if django.conf.settings.DEBUG:
+        response_data["queries_info"] = {
+            "count": len(django.db.connection.queries),
+            "total_time": sum(
+                float(q["time"]) for q in django.db.connection.queries
+            ),
+            "queries": [
+                {"sql": q["sql"], "time": q["time"]}
+                for q in django.db.connection.queries
+            ],
+        }
+
     return rest_framework.response.Response(
-        {"data": data, "message": message},
+        response_data,
         status=http_status,
     )
 
@@ -31,9 +47,16 @@ def error_response(
     if fields is None and serializer_errors is None:
         fields = {}
     elif serializer_errors:
-        fields = {
-            k: v[0] for k, v in serializer_errors.items() if k != "form_error"
-        }
+        fields = {}
+        for key, value in serializer_errors.items():
+            if key == "form_error":
+                continue
+
+            if isinstance(value[0], str):
+                fields[key] = value[0]
+            else:
+                fields[key] = {k: v[0] for k, v in value[0].items()}
+
         form_error = serializer_errors.get("form_error", [None])[0]
 
     return rest_framework.response.Response(

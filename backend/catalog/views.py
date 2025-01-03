@@ -1,5 +1,3 @@
-import celery.result
-import celery.states
 import django.db
 import django.shortcuts
 import rest_framework.decorators
@@ -7,7 +5,7 @@ import rest_framework.generics
 import rest_framework.pagination
 import rest_framework.permissions
 import rest_framework.response
-import rest_framework.status
+import rest_framework.status as status
 import rest_framework.views
 
 import catalog.models
@@ -44,7 +42,7 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
             return core.utils.success_response(
                 data={"id": constructor_product.id},
                 message="Конструктор успешно создан",
-                http_status=rest_framework.status.HTTP_201_CREATED,
+                http_status=status.HTTP_201_CREATED,
             )
 
         return core.utils.error_response(
@@ -70,11 +68,15 @@ class ProductDetailView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
 
     def get(self, request, product_id, *args, **kwargs):
-        product = catalog.models.Product.objects.filter(id=product_id).first()
+        product = (
+            catalog.models.Product.objects.select_related("image")
+            .filter(id=product_id)
+            .first()
+        )
         if not product:
             return core.utils.error_response(
                 message="Продукт не найден",
-                http_status=rest_framework.status.HTTP_404_NOT_FOUND,
+                http_status=status.HTTP_404_NOT_FOUND,
             )
 
         garments_data = product.garments.items_by_product_detail(product)
@@ -82,6 +84,7 @@ class ProductDetailView(rest_framework.views.APIView):
             "id": product.id,
             "name": product.name,
             "price": product.price,
+            "image": self.request.build_absolute_uri(product.image.image.url),
             "garments": catalog.utils.get_structured_garments(garments_data),
             "images": catalog.utils.get_structured_images(
                 product, garments_data, request
@@ -109,7 +112,7 @@ class AddToCartView(rest_framework.generics.GenericAPIView):
         return core.utils.success_response(
             data=serializer.save(),
             message="Товар успешно добавлен в корзину",
-            http_status=rest_framework.status.HTTP_201_CREATED,
+            http_status=status.HTTP_201_CREATED,
         )
 
 
@@ -189,7 +192,7 @@ class CreateOrderView(rest_framework.generics.GenericAPIView):
         return core.utils.success_response(
             data={"task_id": task.id},
             message="Задача создания заказа запущена",
-            http_status=rest_framework.status.HTTP_201_CREATED,
+            http_status=status.HTTP_201_CREATED,
         )
 
 
@@ -250,7 +253,7 @@ class OrderDetailView(rest_framework.views.APIView):
         if not order:
             return core.utils.error_response(
                 message="Заказ не найден",
-                http_status=rest_framework.status.HTTP_404_NOT_FOUND,
+                http_status=status.HTTP_404_NOT_FOUND,
             )
 
         serializer = catalog.serializers.OrderDetailSerializer(
@@ -262,29 +265,3 @@ class OrderDetailView(rest_framework.views.APIView):
             data=serializer.data,
             message="Заказ успешно получен",
         )
-
-
-class TaskStatusView(rest_framework.views.APIView):
-    def get(self, request, task_id):
-        task = celery.result.AsyncResult(task_id)
-        if task.state == celery.states.PENDING and not task.task_id:
-            return core.utils.error_response(
-                message="Задача не найдена",
-                errors={"form_error": "task_id не найден"},
-                http_status=rest_framework.status.HTTP_404_NOT_FOUND,
-            )
-
-        data = {
-            "status": task.state,
-            "result": (
-                task.get() if task.ready() and task.successful() else None
-            ),
-            "error": (
-                str(task.result)
-                if task.ready() and not task.successful()
-                else None
-            ),
-            "info": task.info,
-        }
-
-        return core.utils.success_response(data=data)

@@ -4,6 +4,23 @@ import django.db.models
 import users.validators
 
 
+class Role(django.db.models.TextChoices):
+    MODERATOR = "moderator", "Модератор"
+    DESIGNER = "designer", "Дизайнер"
+    EMBROIDERER = "embroiderer", "Вышивальщик"
+    CURIER = "courier", "Курьер"
+
+
+class UserRole(django.db.models.Model):
+    role = django.db.models.CharField(
+        max_length=32,
+        choices=Role.choices,
+    )
+
+    def __str__(self):
+        return self.get_role_display()
+
+
 class UserManager(django.contrib.auth.models.UserManager):
     CONONICAL_DOMAINS = {
         "yandex.ru": "ya.ru",
@@ -70,6 +87,11 @@ class User(django.contrib.auth.models.AbstractUser):
     verified_email = django.db.models.BooleanField(
         "подтвержденный адрес электронной почты",
         default=False,
+    )
+    roles = django.db.models.ManyToManyField(
+        UserRole,
+        verbose_name="роли",
+        related_name="users",
     )
 
     class Meta(django.contrib.auth.models.AbstractUser.Meta):

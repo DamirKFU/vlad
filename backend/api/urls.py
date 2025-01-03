@@ -26,4 +26,14 @@ urlpatterns = [
         django.urls.include("payments.urls", "payments"),
         name="payments",
     ),
+    django.urls.path(
+        "staff/",
+        django.urls.include("staff.urls", "staff"),
+        name="staff",
+    ),
+    django.urls.path(
+        "core/",
+        django.urls.include("core.urls", "core"),
+        name="core",
+    ),
 ]

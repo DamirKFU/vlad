@@ -16,6 +16,8 @@ import Cart from './pages/Cart';
 import OrderHistory from './pages/OrderHistory';
 import Checkout from './pages/Checkout';
 import OrderDetail from './pages/OrderDetail';
+import StaffOrders from './pages/StaffOrders';
+import StaffOrderDetail from './pages/StaffOrderDetail';
 
 
 function Logout() {
@@ -54,6 +56,8 @@ function App() {
           <Route path="/orders" element={<OrderHistory />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders/:orderId" element={<OrderDetail />} />
+          <Route path="/staff/orders" element={<StaffOrders />} />
+          <Route path="/staff/orders/:orderId" element={<StaffOrderDetail />} />
         </Routes>
       </BrowserRouter>
   )

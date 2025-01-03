@@ -32,21 +32,32 @@ const Checkout = () => {
 
     const checkTaskStatus = async (taskId) => {
         try {
-            const response = await api.get(`catalog/task/${taskId}/`);
-            const { status, result, error } = response.data.data;
+            const response = await api.get(`core/task/${taskId}/`);
+            const { message, data } = response.data;
 
-            if (status === 'SUCCESS') {
-                if (result && result.order_id) {
-                    navigate(`/orders/${result.order_id}`);
-                    return true;
-                }
-                setError('Ошибка при создании заказа: не получен ID заказа');
-                setLoading(false);
+            // Если задача еще выполняется
+            if (message === 'Задача еще не выполнена') {
+                return false;
+            }
+
+            // Если задача выполнена успешно
+            if (data?.order_id) {
+                navigate(`/orders/${data.order_id}`);
                 return true;
-            } 
-            
-            if (status === 'FAILURE' || error) {
-                setError(error || 'Не удалось создать заказ');
+            }
+
+            // Обработка ошибок валидации и других ошибок
+            if (data?.errors) {
+                if (data.errors.form_error) {
+                    setError(data.errors.form_error);
+                } else {
+                    if (data.errors.address) {
+                        setAddressError(data.errors.address[0]);
+                    }
+                    if (data.errors.phone) {
+                        setPhoneError(data.errors.phone[0]);
+                    }
+                }
                 setLoading(false);
                 return true;
             }
@@ -56,6 +67,24 @@ const Checkout = () => {
         } catch (err) {
             if (err.response?.status === 404) {
                 setError('Не удалось создать заказ: задача не найдена');
+                setLoading(false);
+                return true;
+            }
+            // Добавляем обработку 400 статуса
+            if (err.response?.status === 400) {
+                const { errors, message } = err.response.data;
+                if (errors?.form_error) {
+                    setError(errors.form_error);
+                } else if (errors) {
+                    if (errors.address) {
+                        setAddressError(errors.address[0]);
+                    }
+                    if (errors.phone) {
+                        setPhoneError(errors.phone[0]);
+                    }
+                } else {
+                    setError(message || 'Ошибка валидации');
+                }
                 setLoading(false);
                 return true;
             }
