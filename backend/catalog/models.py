@@ -642,6 +642,10 @@ class OrderManager(django.db.models.Manager):
             .order_by("id")
             .values("image")[:1]
         )
+        embroidery_subquery = ProductEmbroideryFile.objects.filter(
+            category=django.db.models.OuterRef("garment__category_id"),
+            product=django.db.models.OuterRef("product_id"),
+        ).values("embroidery")[:1]
 
         return (
             self.filter(user=user)
@@ -657,7 +661,10 @@ class OrderManager(django.db.models.Manager):
                     .annotate(
                         matching_image=django.db.models.Subquery(
                             image_subquery
-                        )
+                        ),
+                        embroidery=django.db.models.Subquery(
+                            embroidery_subquery
+                        ),
                     )
                     .only(
                         "order__id",
@@ -706,7 +713,8 @@ class OrderManager(django.db.models.Manager):
 
     def get_in_work_order_detail(self, order_id):
         subquery = ProductEmbroideryFile.objects.filter(
-            category=django.db.models.OuterRef("garment__category_id")
+            category=django.db.models.OuterRef("garment__category_id"),
+            product=django.db.models.OuterRef("product_id"),
         ).values("embroidery")[:1]
         return (
             self.filter(id=order_id)

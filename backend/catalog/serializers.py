@@ -452,14 +452,19 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
             )
         )
         instance.payment_status = status_payment
-        instance.save()
         if status_payment == catalog.models.PaymentStatus.SUCCEEDED:
-            instance.status = catalog.models.OrderStatus.IN_WORK
-            instance.save()
+            has_embroidery = any(
+                item.embroidery for item in instance.items.all()
+            )
+            if not has_embroidery:
+                instance.status = catalog.models.OrderStatus.PAID
+            else:
+                instance.status = catalog.models.OrderStatus.IN_WORK
 
         if status_payment == catalog.models.PaymentStatus.CANCELED:
             instance.status = catalog.models.OrderStatus.CANCELED
-            instance.save()
+
+        instance.save(update_fields=["status", "payment_status"])
 
         return super().to_representation(instance)
 

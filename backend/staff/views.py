@@ -273,10 +273,21 @@ class StaffOrderDetailView(rest_framework.views.APIView):
         items_data = json.loads(self.request.data["items"])
 
         embroidery_files = {}
-        for key, value in self.request.FILES.items():
-            if key.startswith("embroidery_"):
-                index = int(key.split("_")[1])
-                embroidery_files[index] = value
+        try:
+            for key, value in self.request.FILES.items():
+                if key.startswith("embroidery_"):
+                    index = int(key.split("_")[1])
+                    embroidery_files[index] = value
+        except IndexError:
+            return core.utils.error_response(
+                fields={
+                    "items": {
+                        "embroidery": "файл должен имет"
+                        "формат filename_{index}"
+                    }
+                },
+                message="неправильные имена файлов",
+            )
 
         for item in items_data:
             if item["id"] in embroidery_files:
