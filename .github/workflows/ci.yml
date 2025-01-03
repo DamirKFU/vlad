@@ -58,7 +58,7 @@ jobs:
         SITE_URL: https://test.com
       run: |
         cd backend
-        python manage.py test --keepdb
+        python manage.py test
 
     - name: Set up Node.js
       uses: actions/setup-node@v2
