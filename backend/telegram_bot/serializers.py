@@ -8,7 +8,7 @@ class TelegramAuthSerializer(rest_framework.serializers.Serializer):
 
     def validate_token(self, value):
         try:
-            django.core.signing.loads(value, max_age=60)
+            value = django.core.signing.loads(value, max_age=60)
         except (
             django.core.signing.BadSignature,
             django.core.signing.SignatureExpired,

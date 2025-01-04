@@ -110,10 +110,11 @@ REST_FRAMEWORK = {
 CORS_ALLOW_CREDENTIALS = True
 
 if DEBUG:
-    ALLOWED_HOSTS = ["localhost"]
-    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
@@ -179,4 +180,4 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_BOT_TOKEN = "7232196435:AAFIYkXA4IXk4CKvnAWDx3oP1FAMh18Ases"
