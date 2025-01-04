@@ -279,7 +279,6 @@ class YooKassaWebhookTest(django.test.TestCase):
         )
 
     def test_payment_succeeded_with_embroidery(self):
-        # Создаем файл вышивки
         catalog.models.ProductEmbroideryFile.objects.create(
             product=self.product,
             category=self.category,
