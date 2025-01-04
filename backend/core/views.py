@@ -61,7 +61,7 @@ class TaskStatusView(rest_framework.views.APIView):
         if task.state == celery.states.FAILURE:
             return core.utils.error_response(
                 message="Ошибка выполнения задачи",
-                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_406_NOT_ACCEPTABLE,
             )
 
         result = task.get()

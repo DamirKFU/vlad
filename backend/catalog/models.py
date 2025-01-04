@@ -792,6 +792,44 @@ class OrderManager(django.db.models.Manager):
             )
         ).first()
 
+    def get_for_yookassa_webhook(self, payment_id):
+        subquery = django.db.models.Subquery(
+            ProductEmbroideryFile.objects.filter(
+                product=django.db.models.OuterRef("product_id"),
+                category=django.db.models.OuterRef("garment__category_id"),
+            ).values("embroidery")[:1]
+        )
+        return (
+            self.filter(payment_id=payment_id)
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.select_related(
+                        "product",
+                        "garment__category",
+                    )
+                    .distinct("product_id", "garment__category")
+                    .annotate(
+                        embroidery=subquery,
+                    )
+                    .only(
+                        "order__id",
+                        "product__id",
+                        "garment__category__id",
+                        "garment__id",
+                        "quantity",
+                    ),
+                )
+            )
+            .only(
+                "id",
+                "items",
+                "payment_id",
+                "payment_status",
+                "status",
+            )
+        ).first()
+
     def get_draft_order_detail(self, order_id):
         return (
             self.filter(id=order_id)

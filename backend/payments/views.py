@@ -4,6 +4,7 @@ import rest_framework.status
 import rest_framework.views
 
 import catalog.models
+import core.utils
 
 
 class YooKassaWebhookView(rest_framework.views.APIView):
@@ -13,35 +14,59 @@ class YooKassaWebhookView(rest_framework.views.APIView):
 
         try:
             event_json = request.data
-            order = catalog.models.Order.objects.get(
+
+            if event_json.get("type") != "notification":
+                return core.utils.error_response(
+                    message="Неверный тип уведомления",
+                    http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
+                )
+
+            order = catalog.models.Order.objects.get_for_yookassa_webhook(
                 payment_id=event_json["object"]["id"],
             )
+
+            if not order:
+                return core.utils.error_response(
+                    message="Заказ не найден",
+                    form_error="Заказ не найден",
+                    http_status=rest_framework.status.HTTP_404_NOT_FOUND,
+                )
 
             if event_json["event"] == "payment.succeeded":
                 with django.db.transaction.atomic():
                     order.payment_status = (
                         catalog.models.PaymentStatus.SUCCEEDED
                     )
-                    order.save()
-                    order.status = catalog.models.OrderStatus.PAID
-                    order.save()
+                    has_embroidery = any(
+                        item.embroidery for item in order.items.all()
+                    )
+                    if not has_embroidery:
+                        order.status = catalog.models.OrderStatus.PAID
+                    else:
+                        order.status = catalog.models.OrderStatus.IN_WORK
+
+                    order.save(update_fields=["payment_status", "status"])
 
             elif event_json["event"] == "payment.canceled":
                 with django.db.transaction.atomic():
                     order.payment_status = (
                         catalog.models.PaymentStatus.CANCELED
                     )
-                    order.save()
                     order.status = catalog.models.OrderStatus.CANCELED
-                    order.save()
+                    order.save(update_fields=["payment_status", "status"])
+            else:
+                return core.utils.error_response(
+                    message="Неизвестный тип события",
+                    http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
+                )
 
-            return rest_framework.response.Response(
-                {"status": "success"},
-                status=rest_framework.status.HTTP_200_OK,
+            return core.utils.success_response(
+                message="Webhook успешно обработан",
             )
 
         except Exception as e:
-            return rest_framework.response.Response(
-                {"error": str(e)},
-                status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            return core.utils.error_response(
+                message="Ошибка обработки webhook",
+                fields={"form_error": str(e)},
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
             )
