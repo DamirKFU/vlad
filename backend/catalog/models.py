@@ -808,7 +808,6 @@ class OrderManager(django.db.models.Manager):
                         "product",
                         "garment__category",
                     )
-                    .distinct("product_id", "garment__category")
                     .annotate(
                         embroidery=subquery,
                     )

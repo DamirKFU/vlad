@@ -270,7 +270,14 @@ class StaffOrderDetailView(rest_framework.views.APIView):
         return self._get_success_response(order)
 
     def _handle_paid_forward(self, order, data):
-        items_data = json.loads(self.request.data["items"])
+        json_data = data.get("items")
+        if json_data is None:
+            return core.utils.error_response(
+                message="Не указаны элементы заказа",
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            )
+
+        items_data = json.loads(json_data)
 
         embroidery_files = {}
         try:
