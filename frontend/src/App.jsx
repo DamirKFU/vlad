@@ -18,6 +18,7 @@ import Checkout from './pages/Checkout';
 import OrderDetail from './pages/OrderDetail';
 import StaffOrders from './pages/StaffOrders';
 import StaffOrderDetail from './pages/StaffOrderDetail';
+import TelegramAuth from './pages/TelegramAuth';
 
 
 function Logout() {
@@ -58,6 +59,7 @@ function App() {
           <Route path="/orders/:orderId" element={<OrderDetail />} />
           <Route path="/staff/orders" element={<StaffOrders />} />
           <Route path="/staff/orders/:orderId" element={<StaffOrderDetail />} />
+          <Route path="/telegram-auth" element={<TelegramAuth />} />
         </Routes>
       </BrowserRouter>
   )

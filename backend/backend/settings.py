@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "payments.apps.PaymentsConfig",
     "staff.apps.StaffConfig",
     "core.apps.CoreConfig",
+    "telegram_bot.apps.TelegramBotConfig",
 ]
 
 MIDDLEWARE = [
@@ -116,6 +117,7 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
@@ -164,9 +166,11 @@ YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
 
-SITE_URL = os.getenv("SITE_URL")
+SITE_URL = "http://localhost:3000"
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")

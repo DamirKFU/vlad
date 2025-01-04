@@ -862,6 +862,18 @@ class OrderManager(django.db.models.Manager):
     def get_order_status(self, order_id):
         return self.filter(id=order_id).only("status").first()
 
+    def get_for_telegram_bot(self, order_id):
+        return (
+            self.filter(id=order_id)
+            .select_related("user")
+            .only(
+                "id",
+                "status",
+                "user__telegram_id",
+            )
+            .first()
+        )
+
 
 class Order(django.db.models.Model):
     objects = OrderManager()

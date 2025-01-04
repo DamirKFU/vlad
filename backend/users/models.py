@@ -93,6 +93,13 @@ class User(django.contrib.auth.models.AbstractUser):
         verbose_name="роли",
         related_name="users",
     )
+    telegram_id = django.db.models.CharField(
+        "ID в Telegram",
+        max_length=100,
+        help_text="ID в Telegram",
+        null=True,
+        blank=True,
+    )
 
     class Meta(django.contrib.auth.models.AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
