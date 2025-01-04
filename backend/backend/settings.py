@@ -1,4 +1,3 @@
-import datetime
 import os
 import pathlib
 
@@ -11,8 +10,6 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = True
-
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 DEFAULT_VERIFED_EMAIL = False
 
@@ -110,24 +107,33 @@ REST_FRAMEWORK = {
     ],
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(minutes=5),
-    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=1),
-}
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1"]
-
 if DEBUG:
+    ALLOWED_HOSTS = ["localhost"]
+    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+    ]
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
     INTERNAL_IPS = os.getenv("DJANGO_INTERNAL_IPS", "127.0.0.1").split(",")
+
+else:
+    host = os.getenv("HOST")
+    port = os.getenv("PORT")
+    ALLOWED_HOSTS = [host]
+    CSRF_TRUSTED_ORIGINS = [f"https://{host}:{port}"]
+    CORS_ALLOWED_ORIGINS = [
+        f"https://{host}:{port}",
+    ]
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_HTTPONLY = False
+    SESSION_COOKIE_HTTPONLY = True
+
 
 AUTH_USER_MODEL = "users.User"
 
