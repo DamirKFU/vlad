@@ -667,9 +667,7 @@ class OrderManager(django.db.models.Manager):
                 f"{OrderItem.garment.field.name}__"
                 f"{Garment.category.field.name}"
             ),
-            product=django.db.models.OuterRef(
-                OrderItem.product.field.name
-            ),
+            product=django.db.models.OuterRef(OrderItem.product.field.name),
         ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
 
         return (
@@ -768,9 +766,7 @@ class OrderManager(django.db.models.Manager):
                 f"{OrderItem.garment.field.name}__"
                 f"{Garment.category.field.name}"
             ),
-            product=django.db.models.OuterRef(
-                OrderItem.product.field.name
-            ),
+            product=django.db.models.OuterRef(OrderItem.product.field.name),
         ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
         return (
             self.filter(id=order_id)
@@ -977,9 +973,7 @@ class OrderManager(django.db.models.Manager):
     def get_draft_order_detail(self, order_id):
         return (
             self.filter(id=order_id)
-            .select_related(
-                Order.user.field.name
-            )
+            .select_related(Order.user.field.name)
             .only(
                 Order.id.field.name,
                 Order.status.field.name,
