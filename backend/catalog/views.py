@@ -69,7 +69,9 @@ class ProductDetailView(rest_framework.views.APIView):
 
     def get(self, request, product_id, *args, **kwargs):
         product = (
-            catalog.models.Product.objects.select_related("image")
+            catalog.models.Product.objects.select_related(
+                catalog.models.Product.image.related.name
+            )
             .filter(id=product_id)
             .first()
         )

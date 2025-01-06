@@ -52,7 +52,9 @@ class ConstructorProductCreateSerializer(
 class CategorySerializer(rest_framework.serializers.ModelSerializer):
     class Meta:
         model = catalog.models.Category
-        fields = ["name"]
+        fields = [
+            catalog.models.Category.id.field.name,
+        ]
 
 
 class ProductSerializer(rest_framework.serializers.ModelSerializer):
@@ -61,10 +63,10 @@ class ProductSerializer(rest_framework.serializers.ModelSerializer):
     class Meta:
         model = catalog.models.Product
         fields = [
-            "id",
-            "name",
-            "image",
-            "price",
+            catalog.models.Product.id.field.name,
+            catalog.models.Product.name.field.name,
+            catalog.models.Product.image.related.name,
+            catalog.models.Product.price.field.name,
         ]
 
     def get_image(self, obj):
@@ -171,35 +173,53 @@ class DeleteCartItemSerializer(rest_framework.serializers.Serializer):
 
 
 class CartItemSerializer(rest_framework.serializers.ModelSerializer):
-    name = rest_framework.serializers.CharField(source="product.name")
+    name = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.CartItem.product.field.name}."
+            f"{catalog.models.Product.name.field.name}"
+        )
+    )
     category = rest_framework.serializers.CharField(
-        source="garment.category.name"
+        source=(
+            f"{catalog.models.CartItem.garment.field.name}."
+            f"{catalog.models.Garment.category.field.name}."
+            f"{catalog.models.Category.name.field.name}"
+        )
     )
-    color = rest_framework.serializers.CharField(source="garment.color.color")
-    size = rest_framework.serializers.CharField(source="garment.size")
+    color = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.CartItem.garment.field.name}."
+            f"{catalog.models.Garment.color.field.name}."
+            f"{catalog.models.Color.color.field.name}"
+        )
+    )
+    size = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.CartItem.garment.field.name}."
+            f"{catalog.models.Garment.size.field.name}"
+        )
+    )
     available_quantity = rest_framework.serializers.IntegerField(
-        source="garment.count"
+        source=(
+            f"{catalog.models.CartItem.garment.field.name}."
+            f"{catalog.models.Garment.count.field.name}"
+        )
     )
-    price = rest_framework.serializers.SerializerMethodField()
     image = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = catalog.models.CartItem
         fields = [
-            "id",
+            catalog.models.CartItem.id.field.name,
             "name",
             "category",
             "color",
             "size",
-            "quantity",
+            catalog.models.CartItem.quantity.field.name,
             "available_quantity",
-            "price",
             "total_price",
             "image",
         ]
-
-    def get_price(self, obj):
-        return obj.product.price + obj.garment.price
 
     def get_image(self, obj):
         request = self.context.get("request")
@@ -303,12 +323,32 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
 
 
 class OrderItemSerializer(rest_framework.serializers.ModelSerializer):
-    name = rest_framework.serializers.CharField(source="product.name")
-    category = rest_framework.serializers.CharField(
-        source="garment.category.name"
+    name = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.OrderItem.product.field.name}."
+            f"{catalog.models.Product.name.field.name}"
+        )
     )
-    color = rest_framework.serializers.CharField(source="garment.color.color")
-    size = rest_framework.serializers.CharField(source="garment.size")
+    category = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.OrderItem.garment.field.name}."
+            f"{catalog.models.Garment.category.field.name}."
+            f"{catalog.models.Category.name.field.name}"
+        )
+    )
+    color = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.OrderItem.garment.field.name}."
+            f"{catalog.models.Garment.color.field.name}."
+            f"{catalog.models.Color.color.field.name}"
+        )
+    )
+    size = rest_framework.serializers.CharField(
+        source=(
+            f"{catalog.models.OrderItem.garment.field.name}."
+            f"{catalog.models.Garment.size.field.name}"
+        )
+    )
     image = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
@@ -318,8 +358,8 @@ class OrderItemSerializer(rest_framework.serializers.ModelSerializer):
             "category",
             "color",
             "size",
-            "quantity",
-            "price",
+            catalog.models.OrderItem.quantity.field.name,
+            catalog.models.OrderItem.price.field.name,
             "total_price",
             "image",
         ]
@@ -338,18 +378,18 @@ class OrderItemSerializer(rest_framework.serializers.ModelSerializer):
 class OrderSerializer(rest_framework.serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
-            "address",
-            "created_at",
-            "total_sum",
+            catalog.models.Order.address.field.name,
+            catalog.models.Order.created_at.field.name,
+            catalog.models.Order.total_sum.field.name,
             "items",
         ]
 
@@ -424,19 +464,19 @@ class CancelOrderSerializer(rest_framework.serializers.Serializer):
 class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
     confirmation_url = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
-            "address",
-            "phone",
-            "total_sum",
+            catalog.models.Order.address.field.name,
+            catalog.models.Order.phone.field.name,
+            catalog.models.Order.total_sum.field.name,
             "items",
             "confirmation_url",
         ]
@@ -464,7 +504,12 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
         if status_payment == catalog.models.PaymentStatus.CANCELED:
             instance.status = catalog.models.OrderStatus.CANCELED
 
-        instance.save(update_fields=["status", "payment_status"])
+        instance.save(
+            update_fields=[
+                catalog.models.Order.status.field.name,
+                catalog.models.Order.payment_status.field.name,
+            ]
+        )
 
         return super().to_representation(instance)
 

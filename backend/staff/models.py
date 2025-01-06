@@ -5,7 +5,13 @@ import catalog.models
 
 class OrderLogManager(django.db.models.Manager):
     def get_order_logs(self, order_id):
-        return self.select_related("order", "user").filter(order_id=order_id)
+        return self.select_related(
+            OrderLog.order.field.name,
+            OrderLog.user.field.name,
+        ).filter(order_id=order_id)
+
+    def get_last_log(self, order_id):
+        return self.get_order_logs(order_id).last()
 
 
 class OrderLog(django.db.models.Model):

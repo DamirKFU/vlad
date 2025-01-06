@@ -341,9 +341,8 @@ class StaffOrderDetailView(rest_framework.views.APIView):
         return self._get_success_response(order)
 
     def _get_success_response(self, order):
-        serializer = self._get_serializer(order)
         return core.utils.success_response(
-            data=serializer.data,
+            data=order.status,
             message="Статус заказа успешно обновлен",
         )
 

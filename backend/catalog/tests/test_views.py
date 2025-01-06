@@ -679,7 +679,6 @@ class CartViewTest(django.test.TestCase):
             "size",
             "quantity",
             "available_quantity",
-            "price",
             "total_price",
             "image",
         }
@@ -707,11 +706,6 @@ class CartViewTest(django.test.TestCase):
             cart_data["available_quantity"],
             self.garment.count,
             "Неверное доступное количество",
-        )
-        self.assertEqual(
-            cart_data["price"],
-            self.product.price + self.garment.price,
-            "Неверная цена",
         )
         self.assertEqual(
             cart_data["total_price"],

@@ -3,58 +3,37 @@ import rest_framework.serializers
 import catalog.models
 import staff.models
 import staff.utils
+import users.models
 
 
 class StaffOrderSerializer(rest_framework.serializers.ModelSerializer):
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
         ]
 
 
 class StaffOrderDetailSerializer(rest_framework.serializers.ModelSerializer):
-    last_log = rest_framework.serializers.SerializerMethodField()
     next_status = rest_framework.serializers.SerializerMethodField()
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
-            "last_log",
             "next_status",
         ]
-
-    def get_last_log(self, obj):
-        last_log = (
-            obj.logs.select_related("user")
-            .only(
-                "order__id",
-                "user__email",
-                "error_comment",
-                "created_at",
-            )
-            .first()
-        )
-        if not last_log:
-            return None
-
-        return {
-            "user": last_log.user.email,
-            "comment": last_log.error_comment,
-            "created_at": last_log.created_at,
-        }
 
     def get_next_status(self, obj):
         status_flow = {
@@ -72,12 +51,17 @@ class StaffOrderDetailSerializer(rest_framework.serializers.ModelSerializer):
 
 
 class OrderLogSerializer(rest_framework.serializers.ModelSerializer):
-    user = rest_framework.serializers.CharField(source="user.email")
+    user = rest_framework.serializers.CharField(
+        source=(
+            f"{staff.models.OrderLog.user.field.name}."
+            f"{users.models.User.email.field.name}"
+        )
+    )
     from_status_display = rest_framework.serializers.CharField(
-        source="get_from_status_display"
+        source=f"get_{staff.models.OrderLog.from_status.field.name}_display"
     )
     to_status_display = rest_framework.serializers.CharField(
-        source="get_to_status_display"
+        source=f"get_{staff.models.OrderLog.to_status.field.name}_display"
     )
 
     class Meta:
@@ -86,8 +70,8 @@ class OrderLogSerializer(rest_framework.serializers.ModelSerializer):
             "user",
             "from_status_display",
             "to_status_display",
-            "error_comment",
-            "created_at",
+            staff.models.OrderLog.error_comment.field.name,
+            staff.models.OrderLog.created_at.field.name,
         ]
 
 
@@ -105,7 +89,9 @@ class DraftForwardSerializer(ForwardOrderSerializer):
 
     class Meta:
         model = catalog.models.Order
-        fields = ["tracking_code"]
+        fields = [
+            catalog.models.Order.tracking_code.field.name,
+        ]
 
     def validate_tracking_code(self, value):
         if not value.strip():
@@ -129,7 +115,9 @@ class ReturnOrderSerializer(rest_framework.serializers.ModelSerializer):
 
     class Meta:
         model = catalog.models.Order
-        fields = ["error_comment"]
+        fields = [
+            staff.models.OrderLog.error_comment.field.name,
+        ]
 
     def validate_error_comment(self, value):
         if not value.strip():
@@ -232,14 +220,14 @@ class InDeliveryForwardSerializer(ForwardOrderSerializer):
 class PaidOrderSerializer(rest_framework.serializers.ModelSerializer):
     items = rest_framework.serializers.SerializerMethodField()
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
             "items",
         ]
@@ -268,14 +256,14 @@ class PaidOrderSerializer(rest_framework.serializers.ModelSerializer):
 class InWorkOrderSerializer(rest_framework.serializers.ModelSerializer):
     items = rest_framework.serializers.SerializerMethodField()
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
             "items",
         ]
@@ -303,30 +291,30 @@ class InWorkOrderSerializer(rest_framework.serializers.ModelSerializer):
 class DraftOrderSerializer(rest_framework.serializers.ModelSerializer):
     tracking_code = rest_framework.serializers.CharField()
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
-            "tracking_code",
+            catalog.models.Order.tracking_code.field.name,
         ]
 
 
 class InDeliveryOrderSerializer(rest_framework.serializers.ModelSerializer):
     tracking_code = rest_framework.serializers.CharField()
     status_display = rest_framework.serializers.CharField(
-        source="get_status_display"
+        source=f"get_{catalog.models.Order.status.field.name}_display"
     )
 
     class Meta:
         model = catalog.models.Order
         fields = [
-            "id",
-            "status",
+            catalog.models.Order.id.field.name,
+            catalog.models.Order.status.field.name,
             "status_display",
-            "tracking_code",
+            catalog.models.Order.tracking_code.field.name,
         ]

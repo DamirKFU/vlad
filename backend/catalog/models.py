@@ -138,7 +138,7 @@ class GarmentManager(django.db.models.Manager):
         return (
             self.filter(id=garment_id)
             .only(
-                "price",
+                Garment.price.field.name,
             )
             .first()
         )
@@ -266,8 +266,8 @@ class ProductManager(django.db.models.Manager):
         return (
             self.filter(id=product_id)
             .only(
-                "name",
-                "price",
+                Product.name.field.name,
+                Product.price.field.name,
             )
             .first()
         )
@@ -371,7 +371,10 @@ class ProductAdditionalImageManager(django.db.models.Manager):
     def get_images_for_garments(self, product, garments_data):
         return (
             self.get_queryset()
-            .select_related("category", "color")
+            .select_related(
+                ProductAdditionalImage.category.field.name,
+                ProductAdditionalImage.color.field.name,
+            )
             .filter(
                 product=product,
                 category__in=garments_data.values("category"),
@@ -437,8 +440,8 @@ class CartManager(django.db.models.Manager):
                 category_id=django.db.models.OuterRef("garment__category_id"),
                 color_id=django.db.models.OuterRef("garment__color_id"),
             )
-            .order_by("id")
-            .values("image")[:1]
+            .order_by(ProductAdditionalImage.id.field.name)
+            .values(ProductAdditionalImage.image.field.name)[:1]
         )
         return (
             super()
@@ -514,15 +517,15 @@ class CartManager(django.db.models.Manager):
     def get_cart_for_order(self, user_id):
         return (
             self.filter(user_id=user_id)
-            .select_related("user")
+            .select_related(Cart.user.field.name)
             .prefetch_related(
                 django.db.models.Prefetch(
-                    "items",
+                    Cart.items.field.related_query_name(),
                     queryset=CartItem.objects.select_related(
-                        "product",
+                        CartItem.product.field.name,
                     )
                     .select_related(
-                        "garment",
+                        CartItem.garment.field.name,
                     )
                     .select_for_update(),
                 ),
@@ -551,18 +554,27 @@ class CartItemManager(django.db.models.Manager):
     def get_cart_item_for_update(self, user, item_id):
         return (
             self.select_related(
-                "garment",
-                "product",
+                CartItem.garment.field.name,
+                CartItem.product.field.name,
             )
             .filter(
                 cart__user=user,
                 id=item_id,
             )
             .only(
-                "quantity",
-                "garment__count",
-                "garment__price",
-                "product__price",
+                CartItem.quantity.field.name,
+                (
+                    f"{CartItem.garment.field.name}"
+                    f"__{Garment.count.field.name}"
+                ),
+                (
+                    f"{CartItem.garment.field.name}"
+                    f"__{Garment.price.field.name}"
+                ),
+                (
+                    f"{CartItem.product.field.name}"
+                    f"__{Product.price.field.name}"
+                ),
             )
             .first()
         )
@@ -635,28 +647,49 @@ class OrderManager(django.db.models.Manager):
     def get_orders_with_items(self, user):
         image_subquery = (
             ProductAdditionalImage.objects.filter(
-                product_id=django.db.models.OuterRef("product_id"),
-                category_id=django.db.models.OuterRef("garment__category_id"),
-                color_id=django.db.models.OuterRef("garment__color_id"),
+                product=django.db.models.OuterRef(
+                    OrderItem.product.field.name
+                ),
+                category=django.db.models.OuterRef(
+                    f"{OrderItem.garment.field.name}__"
+                    f"{Garment.category.field.name}"
+                ),
+                color=django.db.models.OuterRef(
+                    f"{OrderItem.garment.field.name}__"
+                    f"{Garment.color.field.name}"
+                ),
             )
-            .order_by("id")
-            .values("image")[:1]
+            .order_by(ProductAdditionalImage.id.field.name)
+            .values(ProductAdditionalImage.image.field.name)[:1]
         )
         embroidery_subquery = ProductEmbroideryFile.objects.filter(
-            category=django.db.models.OuterRef("garment__category_id"),
-            product=django.db.models.OuterRef("product_id"),
-        ).values("embroidery")[:1]
+            category=django.db.models.OuterRef(
+                f"{OrderItem.garment.field.name}__"
+                f"{Garment.category.field.name}"
+            ),
+            product=django.db.models.OuterRef(
+                OrderItem.product.field.name
+            ),
+        ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
 
         return (
             self.filter(user=user)
-            .select_related("user")
+            .select_related(
+                Order.user.field.name,
+            )
             .prefetch_related(
                 django.db.models.Prefetch(
-                    "items",
+                    Order.items.field.related_query_name(),
                     queryset=OrderItem.objects.select_related(
-                        "product",
-                        "garment__category",
-                        "garment__color",
+                        OrderItem.product.field.name,
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                        ),
                     )
                     .annotate(
                         matching_image=django.db.models.Subquery(
@@ -667,178 +700,295 @@ class OrderManager(django.db.models.Manager):
                         ),
                     )
                     .only(
-                        "order__id",
-                        "garment__category__name",
-                        "garment__color__color",
-                        "garment__size",
-                        "product__name",
-                        "quantity",
-                        "price",
+                        (
+                            f"{OrderItem.order.field.name}"
+                            f"__{Order.id.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                            f"__{Color.color.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.size.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.name.field.name}"
+                        ),
+                        OrderItem.quantity.field.name,
+                        OrderItem.price.field.name,
                     ),
                 ),
             )
             .only(
-                "id",
-                "status",
-                "items",
-                "address",
-                "total_sum",
-                "user__id",
-                "created_at",
+                Order.id.field.name,
+                Order.status.field.name,
+                Order.items.field.related_query_name(),
+                Order.address.field.name,
+                Order.total_sum.field.name,
+                Order.user.field.name,
+                Order.created_at.field.name,
             )
         )
 
     def get_orders_for_detail(self, user):
         return self.get_orders_with_items(user).only(
-            "id",
-            "status",
-            "items",
-            "address",
-            "phone",
-            "total_sum",
-            "user__id",
-            "user__email",
-            "payment_status",
-            "confirmation_url",
-            "payment_id",
-            "created_at",
+            Order.id.field.name,
+            Order.status.field.name,
+            Order.items.field.related_query_name(),
+            Order.address.field.name,
+            Order.phone.field.name,
+            Order.total_sum.field.name,
+            f"{Order.user.field.name}__{users.models.User.id.field.name}",
+            f"{Order.user.field.name}__{users.models.User.email.field.name}",
+            Order.payment_status.field.name,
+            Order.confirmation_url.field.name,
+            Order.payment_id.field.name,
+            Order.created_at.field.name,
         )
 
     def get_orders_for_staff(self, status):
         return (
-            self.select_related("user")
+            self.select_related(
+                Order.user.field.name,
+            )
             .filter(status=status)
-            .order_by("-created_at")
+            .order_by(f"-{Order.created_at.field.name}")
         )
 
     def get_in_work_order_detail(self, order_id):
         subquery = ProductEmbroideryFile.objects.filter(
-            category=django.db.models.OuterRef("garment__category_id"),
-            product=django.db.models.OuterRef("product_id"),
-        ).values("embroidery")[:1]
+            category=django.db.models.OuterRef(
+                f"{OrderItem.garment.field.name}__"
+                f"{Garment.category.field.name}"
+            ),
+            product=django.db.models.OuterRef(
+                OrderItem.product.field.name
+            ),
+        ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
         return (
             self.filter(id=order_id)
-            .select_related("user")
+            .select_related(
+                Order.user.field.name,
+            )
             .prefetch_related(
                 django.db.models.Prefetch(
-                    "items",
+                    Order.items.field.related_query_name(),
                     queryset=OrderItem.objects.select_related(
-                        "product",
-                        "garment__category",
-                        "garment__color",
-                        "product__image",
+                        OrderItem.garment.field.name,
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                        ),
+                        OrderItem.product.field.name,
                     )
                     .annotate(embroidery=django.db.models.Subquery(subquery))
                     .only(
-                        "garment__category__name",
-                        "order__id",
-                        "product__name",
-                        "product__image__image",
-                        "garment__color__color",
-                        "garment__size",
-                        "quantity",
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                            f"__{Category.name.field.name}"
+                        ),
+                        f"{OrderItem.order.field.name}__{Order.id.field.name}",
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.name.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.image.related.name}"
+                            f"__{ProductAdditionalImage.image.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                            f"__{Color.color.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.size.field.name}"
+                        ),
+                        OrderItem.quantity.field.name,
                     ),
                 )
             )
             .only(
-                "id",
-                "status",
-                "items",
-                "user__email",
-                "tracking_code",
+                Order.id.field.name,
+                Order.status.field.name,
+                Order.items.field.related_query_name(),
+                (
+                    f"{Order.user.field.name}"
+                    f"__{users.models.User.email.field.name}"
+                ),
+                Order.tracking_code.field.name,
             )
         ).first()
 
     def get_paid_order_detail(self, order_id):
         subquery = django.db.models.Subquery(
             ProductEmbroideryFile.objects.filter(
-                product=django.db.models.OuterRef("product"),
-                category=django.db.models.OuterRef("garment__category"),
-            ).values("embroidery")[:1]
+                product=django.db.models.OuterRef(
+                    OrderItem.product.field.name
+                ),
+                category=django.db.models.OuterRef(
+                    f"{OrderItem.garment.field.name}__"
+                    f"{Garment.category.field.name}"
+                ),
+            ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
         )
         return (
             self.filter(id=order_id)
-            .select_related("user")
+            .select_related(
+                Order.user.field.name,
+            )
             .prefetch_related(
                 django.db.models.Prefetch(
-                    "items",
+                    Order.items.field.related_query_name(),
                     queryset=OrderItem.objects.select_related(
-                        "product",
-                        "product__image",
-                        "garment__category",
-                        "garment__color",
+                        OrderItem.product.field.name,
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.image.related.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                        ),
                     )
-                    .distinct("product_id", "garment__category")
+                    .distinct(
+                        OrderItem.product.field.name,
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
+                    )
                     .annotate(
                         embroidery=subquery,
                     )
                     .only(
-                        "garment__category__name",
-                        "order__id",
-                        "product__name",
-                        "product__id",
-                        "product__image__image",
-                        "garment__color__color",
-                        "garment__size",
-                        "quantity",
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                            f"__{Category.name.field.name}"
+                        ),
+                        f"{OrderItem.order.field.name}__{Order.id.field.name}",
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.name.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.image.related.name}"
+                            f"__{ProductAdditionalImage.image.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                            f"__{Color.color.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.size.field.name}"
+                        ),
+                        OrderItem.quantity.field.name,
                     ),
                 )
             )
             .only(
-                "id",
-                "status",
-                "items",
-                "user__email",
+                Order.id.field.name,
+                Order.status.field.name,
+                Order.items.field.related_query_name(),
+                (
+                    f"{Order.user.field.name}"
+                    f"__{users.models.User.email.field.name}"
+                ),
             )
         ).first()
 
     def get_for_yookassa_webhook(self, payment_id):
         subquery = django.db.models.Subquery(
             ProductEmbroideryFile.objects.filter(
-                product=django.db.models.OuterRef("product_id"),
-                category=django.db.models.OuterRef("garment__category_id"),
-            ).values("embroidery")[:1]
+                product=django.db.models.OuterRef(
+                    OrderItem.product.field.name
+                ),
+                category=django.db.models.OuterRef(
+                    f"{OrderItem.garment.field.name}__"
+                    f"{Garment.category.field.name}"
+                ),
+            ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
         )
         return (
             self.filter(payment_id=payment_id)
             .prefetch_related(
                 django.db.models.Prefetch(
-                    "items",
+                    Order.items.field.related_query_name(),
                     queryset=OrderItem.objects.select_related(
-                        "product",
-                        "garment__category",
+                        OrderItem.product.field.name,
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
                     )
                     .annotate(
                         embroidery=subquery,
                     )
                     .only(
-                        "order__id",
-                        "product__id",
-                        "garment__category__id",
-                        "garment__id",
-                        "quantity",
+                        f"{OrderItem.order.field.name}__{Order.id.field.name}",
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.id.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                            f"__{Category.id.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.id.field.name}"
+                        ),
+                        OrderItem.quantity.field.name,
                     ),
                 )
             )
             .only(
-                "id",
-                "items",
-                "payment_id",
-                "payment_status",
-                "status",
+                Order.id.field.name,
+                Order.items.field.related_query_name(),
+                Order.payment_id.field.name,
+                Order.payment_status.field.name,
+                Order.status.field.name,
             )
         ).first()
 
     def get_draft_order_detail(self, order_id):
         return (
             self.filter(id=order_id)
-            .select_related("user")
+            .select_related(
+                Order.user.field.name
+            )
             .only(
-                "id",
-                "status",
-                "items",
-                "user__email",
-                "tracking_code",
+                Order.id.field.name,
+                Order.status.field.name,
+                Order.items.field.related_query_name(),
+                (
+                    f"{Order.user.field.name}"
+                    f"__{users.models.User.email.field.name}"
+                ),
+                Order.tracking_code.field.name,
             )
             .first()
         )
@@ -849,12 +999,17 @@ class OrderManager(django.db.models.Manager):
     def get_delivered_order_detail(self, order_id):
         return (
             self.filter(id=order_id)
-            .select_related("user")
+            .select_related(
+                Order.user.field.name,
+            )
             .only(
-                "id",
-                "status",
-                "items",
-                "user__email",
+                Order.id.field.name,
+                Order.status.field.name,
+                Order.items.field.related_query_name(),
+                (
+                    f"{Order.user.field.name}"
+                    f"__{users.models.User.email.field.name}"
+                ),
             )
             .first()
         )
@@ -865,11 +1020,16 @@ class OrderManager(django.db.models.Manager):
     def get_for_telegram_bot(self, order_id):
         return (
             self.filter(id=order_id)
-            .select_related("user")
+            .select_related(
+                Order.user.field.name,
+            )
             .only(
-                "id",
-                "status",
-                "user__telegram_id",
+                Order.id.field.name,
+                Order.status.field.name,
+                (
+                    f"{Order.user.field.name}"
+                    f"__{users.models.User.telegram_id.field.name}"
+                ),
             )
             .first()
         )

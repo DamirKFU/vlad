@@ -45,7 +45,12 @@ class YooKassaWebhookView(rest_framework.views.APIView):
                     else:
                         order.status = catalog.models.OrderStatus.IN_WORK
 
-                    order.save(update_fields=["payment_status", "status"])
+                    order.save(
+                        update_fields=[
+                            catalog.models.Order.payment_status.field.name,
+                            catalog.models.Order.status.field.name,
+                        ]
+                    )
 
             elif event_json["event"] == "payment.canceled":
                 with django.db.transaction.atomic():
@@ -53,7 +58,12 @@ class YooKassaWebhookView(rest_framework.views.APIView):
                         catalog.models.PaymentStatus.CANCELED
                     )
                     order.status = catalog.models.OrderStatus.CANCELED
-                    order.save(update_fields=["payment_status", "status"])
+                    order.save(
+                        update_fields=[
+                            catalog.models.Order.payment_status.field.name,
+                            catalog.models.Order.status.field.name,
+                        ]
+                    )
             else:
                 return core.utils.error_response(
                     message="Неизвестный тип события",
