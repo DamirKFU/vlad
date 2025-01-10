@@ -3,7 +3,6 @@ import rest_framework.serializers
 import catalog.models
 import staff.models
 import staff.utils
-import users.models
 
 
 class StaffOrderSerializer(rest_framework.serializers.ModelSerializer):
@@ -50,31 +49,6 @@ class StaffOrderDetailSerializer(rest_framework.serializers.ModelSerializer):
         return status_flow.get(obj.status)
 
 
-class OrderLogSerializer(rest_framework.serializers.ModelSerializer):
-    user = rest_framework.serializers.CharField(
-        source=(
-            f"{staff.models.OrderLog.user.field.name}."
-            f"{users.models.User.email.field.name}"
-        )
-    )
-    from_status_display = rest_framework.serializers.CharField(
-        source=f"get_{staff.models.OrderLog.from_status.field.name}_display"
-    )
-    to_status_display = rest_framework.serializers.CharField(
-        source=f"get_{staff.models.OrderLog.to_status.field.name}_display"
-    )
-
-    class Meta:
-        model = staff.models.OrderLog
-        fields = [
-            "user",
-            "from_status_display",
-            "to_status_display",
-            staff.models.OrderLog.error_comment.field.name,
-            staff.models.OrderLog.created_at.field.name,
-        ]
-
-
 class ForwardOrderSerializer(rest_framework.serializers.ModelSerializer):
     class Meta:
         model = catalog.models.Order
@@ -116,7 +90,7 @@ class ReturnOrderSerializer(rest_framework.serializers.ModelSerializer):
     class Meta:
         model = catalog.models.Order
         fields = [
-            staff.models.OrderLog.error_comment.field.name,
+            "error_comment",
         ]
 
     def validate_error_comment(self, value):
@@ -132,7 +106,6 @@ class ReturnOrderSerializer(rest_framework.serializers.ModelSerializer):
             order=order,
             new_status=new_status,
             user=user,
-            is_return=True,
             error_comment=self.validated_data["error_comment"],
         )
 

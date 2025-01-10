@@ -6,10 +6,12 @@ import rest_framework.status
 import rest_framework.views
 
 import catalog.models
+import core.elasticsearch
 import core.utils
 import staff.models
 import staff.pagination
 import staff.serializers
+import staff.services
 import staff.utils
 import users.models
 
@@ -348,14 +350,8 @@ class StaffOrderDetailView(rest_framework.views.APIView):
 
 
 class OrderLogListView(rest_framework.generics.ListAPIView):
-    serializer_class = staff.serializers.OrderLogSerializer
     permission_classes = [rest_framework.permissions.IsAuthenticated]
     pagination_class = staff.pagination.OrderStaffPagination
-
-    def get_queryset(self):
-        return staff.models.OrderLog.objects.get_order_logs(
-            order_id=self.kwargs["order_id"]
-        )
 
     def get(self, request, order_id, *args, **kwargs):
         if not (
@@ -369,12 +365,21 @@ class OrderLogListView(rest_framework.generics.ListAPIView):
                 http_status=rest_framework.status.HTTP_403_FORBIDDEN,
             )
 
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(page, many=True)
-        paginated_response = self.get_paginated_response(serializer.data).data
+        page = request.query_params.get("page", 1)
+        if not page.isdigit():
+            return core.utils.error_response(
+                message="Некорректная страница",
+                http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            )
+
+        page = int(page)
+        service = staff.services.OrderLogService(
+            order_id=order_id,
+            page_size=self.pagination_class.page_size,
+            current_page=page,
+        )
 
         return core.utils.success_response(
-            data=paginated_response,
+            data=service.get_logs(),
             message="История изменений успешно получена",
         )

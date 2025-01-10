@@ -42,6 +42,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "users.middleware.EnsureSessionKeyMiddleware",
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -111,10 +112,15 @@ CORS_ALLOW_CREDENTIALS = True
 
 if DEBUG:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-    CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+    ]
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:3001",
     ]
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
@@ -181,3 +187,41 @@ CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+        }
+    },
+    "handlers": {
+        "logstash": {
+            "level": "INFO",
+            "class": "logstash.TCPLogstashHandler",
+            "host": "localhost",
+            "port": 5000,
+            "version": 1,
+            "message_type": "django",
+            "fqdn": False,
+            "tags": ["django"],
+        },
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+        },
+    },
+    "loggers": {
+        "grafana": {
+            "handlers": ["logstash"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
+
+ELASTICSEARCH_HOST = "https://localhost:9200"
+ELASTICSEARCH_USER = "elastic"
+ELASTICSEARCH_PASSWORD = "WZNXKNqpcaQtrCigSno9"

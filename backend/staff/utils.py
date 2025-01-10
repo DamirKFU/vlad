@@ -1,5 +1,5 @@
 import catalog.models
-import staff.models
+import staff.logs
 import users.models
 
 
@@ -37,16 +37,16 @@ def get_allowed_statuses(user):
 
 
 def handle_status_change(
-    order, new_status, user, is_return=False, error_comment=None
+    order, new_status, user, error_comment=None
 ):
     old_status = order.status
     order.status = new_status
     order.save()
 
-    staff.models.OrderLog.objects.create(
-        order=order,
-        from_status=old_status,
-        to_status=new_status,
-        user=user,
-        error_comment=error_comment if is_return else None,
+    staff.logs.log_order_status_change(
+        order,
+        user,
+        old_status,
+        new_status,
+        error_comment=error_comment,
     )

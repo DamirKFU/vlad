@@ -8,9 +8,10 @@ const OrderLogs = ({ orderId }) => {
     const [error, setError] = useState(null);
     const [pagination, setPagination] = useState({
         count: 0,
-        next: null,
-        previous: null,
-        current: 1
+        next: false,
+        previous: false,
+        current: 1,
+        total_pages: 1
     });
 
     const fetchLogs = async (page = 1) => {
@@ -18,17 +19,17 @@ const OrderLogs = ({ orderId }) => {
             const response = await api.get(`staff/orders/${orderId}/logs/`, {
                 params: { page }
             });
-            const { results, count, next, previous } = response.data.data;
+            const { results, count, next, previous, total_pages } = response.data.data;
             setLogs(results);
             setPagination({
                 count,
                 next,
                 previous,
-                current: page
+                current: page,
+                total_pages
             });
             setLoading(false);
         } catch (err) {
-            console.error('Error fetching logs:', err);
             setError(err.response?.data?.message || 'Ошибка при загрузке логов');
             setLoading(false);
         }
@@ -52,13 +53,13 @@ const OrderLogs = ({ orderId }) => {
                 {logs.map((log, index) => (
                     <div key={index} className="log-item">
                         <div className="log-header">
-                            <span className="log-user">{log.user}</span>
+                            <span className="log-user">{log.username}</span>
                             <span className="log-date">
                                 {new Date(log.created_at).toLocaleString()}
                             </span>
                         </div>
                         <div className="log-status-change">
-                            {log.from_status_display} → {log.to_status_display}
+                            {log.from_status} → {log.to_status}
                         </div>
                         {log.error_comment && (
                             <div className="log-comment">
@@ -81,7 +82,7 @@ const OrderLogs = ({ orderId }) => {
                         Назад
                     </button>
                     <span className="pagination-info">
-                        Страница {pagination.current} из {Math.ceil(pagination.count / 10)}
+                        Страница {pagination.current} из {pagination.total_pages}
                     </span>
                     <button
                         className="pagination-button"

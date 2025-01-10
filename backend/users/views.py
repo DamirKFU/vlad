@@ -28,6 +28,7 @@ class CrateUserView(rest_framework.generics.CreateAPIView):
             )
 
         self.perform_create(serializer)
+        users.logs.log_user_event("user_registered", request)
         return core.utils.success_response(
             message="Регистрация успешно завершена",
             http_status=rest_framework.status.HTTP_201_CREATED,

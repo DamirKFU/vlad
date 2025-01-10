@@ -5,6 +5,7 @@ import catalog.tasks
 import catalog.utils
 import catalog.validators
 import payments.services
+import staff.logs
 
 
 class ConstructorProductCreateSerializer(
@@ -493,15 +494,33 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
         )
         instance.payment_status = status_payment
         if status_payment == catalog.models.PaymentStatus.SUCCEEDED:
+            staff.logs.log_order_status_change(
+                instance,
+                None,
+                instance.status,
+                catalog.models.OrderStatus.PAID,
+            )
             has_embroidery = any(
                 item.embroidery for item in instance.items.all()
             )
             if not has_embroidery:
                 instance.status = catalog.models.OrderStatus.PAID
             else:
+                staff.logs.log_order_status_change(
+                    instance,
+                    None,
+                    catalog.models.OrderStatus.PAID,
+                    catalog.models.OrderStatus.IN_WORK,
+                )
                 instance.status = catalog.models.OrderStatus.IN_WORK
 
         if status_payment == catalog.models.PaymentStatus.CANCELED:
+            staff.logs.log_order_status_change(
+                instance,
+                None,
+                instance.status,
+                catalog.models.OrderStatus.CANCELED,
+            )
             instance.status = catalog.models.OrderStatus.CANCELED
 
         instance.save(
