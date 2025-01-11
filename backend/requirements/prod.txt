@@ -15,3 +15,4 @@ telebot==0.0.5
 python-json-logger==3.2.1
 python-logstash==0.4.8
 pytz==2024.2
+elasticsearch==8.17.0
