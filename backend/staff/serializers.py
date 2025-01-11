@@ -1,3 +1,4 @@
+import django.core.files.storage
 import rest_framework.serializers
 
 import catalog.models
@@ -136,7 +137,7 @@ class PaidForwardSerializer(ForwardOrderSerializer):
         combination_without_embroidery = {
             (item.garment.category.id, item.product.id)
             for item in items_dict.values()
-            if item.embroidery is None
+            if item.product.embroidery is None
         }
         combination_with_embroidery = {
             (item["category_id"], item["product_id"])
@@ -153,18 +154,27 @@ class PaidForwardSerializer(ForwardOrderSerializer):
 
     def forward(self, order, user):
         data = self.validated_data
+        products = {
+            item.product.id: item.product for item in order.items.all()
+        }
+
         for item in data["items"]:
-            embroidery_file, created = (
-                catalog.models.ProductEmbroideryFile.objects.get_or_create(
-                    product_id=item["product_id"],
-                    category_id=item["category_id"],
-                )
+            if item["embroidery"] is None:
+                continue
+
+            file_name = django.core.files.storage.default_storage.save(
+                catalog.models.get_path_file(
+                    instance=None,
+                    filename=item["embroidery"].name,
+                ),
+                item["embroidery"],
             )
-            if item["embroidery"] is not None:
-                embroidery_file.embroidery = item["embroidery"]
+            product = products[item["product_id"]]
+            product.embroidery = file_name
 
-            embroidery_file.save()
-
+        catalog.models.Product.objects.bulk_update(
+            products.values(), ["embroidery"]
+        )
         staff.utils.handle_status_change(
             order=order,
             new_status=catalog.models.OrderStatus.IN_WORK,
@@ -216,7 +226,11 @@ class PaidOrderSerializer(rest_framework.serializers.ModelSerializer):
                     if item.product.image
                     else None
                 ),
-                "embroidery": item.embroidery,
+                "embroidery": (
+                    item.product.embroidery.url
+                    if item.product.embroidery
+                    else None
+                ),
                 "size": item.garment.size,
                 "category": item.garment.category.name,
                 "category_id": item.garment.category.id,
@@ -252,7 +266,11 @@ class InWorkOrderSerializer(rest_framework.serializers.ModelSerializer):
                     if item.product.image
                     else None
                 ),
-                "embroidery": item.embroidery,
+                "embroidery": (
+                    item.product.embroidery.url
+                    if item.product.embroidery
+                    else None
+                ),
                 "color": item.garment.color.color,
                 "size": item.garment.size,
                 "quantity": item.quantity,

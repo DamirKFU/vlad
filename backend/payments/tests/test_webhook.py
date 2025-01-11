@@ -34,7 +34,8 @@ class YooKassaWebhookTest(django.test.TestCase):
             price=1000,
         )
         self.product = catalog.models.Product.objects.create(
-            name="Test Product"
+            name="Test Product",
+            category=self.category,
         )
 
         self.order = catalog.models.Order.objects.create(
@@ -279,14 +280,12 @@ class YooKassaWebhookTest(django.test.TestCase):
         )
 
     def test_payment_succeeded_with_embroidery(self):
-        catalog.models.ProductEmbroideryFile.objects.create(
-            product=self.product,
-            category=self.category,
-            embroidery=django.core.files.uploadedfile.SimpleUploadedFile(
-                name="test.jef",
-                content=b"test",
-            ),
+        embroidery_file = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test.jef",
+            content=b"test",
         )
+        self.product.embroidery = embroidery_file
+        self.product.save()
 
         catalog.models.OrderItem.objects.create(
             order=self.order,

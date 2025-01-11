@@ -38,7 +38,7 @@ class YooKassaWebhookView(rest_framework.views.APIView):
                         catalog.models.PaymentStatus.SUCCEEDED
                     )
                     has_embroidery = any(
-                        item.embroidery for item in order.items.all()
+                        item.product.embroidery for item in order.items.all()
                     )
                     if not has_embroidery:
                         order.status = catalog.models.OrderStatus.PAID

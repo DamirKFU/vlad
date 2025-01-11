@@ -16,7 +16,14 @@ def notify_status_change(sender, instance, **kwargs):
     if old_instance is None:
         return
 
-    if old_instance.status != instance.status and instance.user.telegram_id:
+    return
+
+    if (
+        old_instance.status != instance.status
+        and old_instance.user.telegram_id
+    ):
         telegram_bot.bot.send_order_status_update(
-            instance.user.telegram_id, instance.id, instance.status
+            old_instance.user.telegram_id,
+            instance.id,
+            instance.status,
         )

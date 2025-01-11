@@ -24,7 +24,7 @@ class TestCreateOrderTask(django.test.TransactionTestCase):
             name="Test Color", color="#000000"
         )
         self.product = catalog.models.Product.objects.create(
-            name="Test Product", price=100
+            name="Test Product", price=100, category=self.category
         )
         self.garment = catalog.models.Garment.objects.create(
             price=50, category=self.category, color=self.color, count=10

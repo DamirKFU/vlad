@@ -3,6 +3,7 @@ import uuid
 
 import django.core.validators
 import django.db.models
+import django.db.models.utils
 import django.utils.safestring
 import sorl.thumbnail
 
@@ -292,6 +293,27 @@ class Product(AbstractModel):
         related_name="products",
         related_query_name="products",
     )
+    category = django.db.models.ForeignKey(
+        Category,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="категория",
+        help_text="категория товара",
+        related_name="products",
+        related_query_name="products",
+    )
+    embroidery = django.db.models.FileField(
+        upload_to=get_path_file,
+        validators=[
+            django.core.validators.FileExtensionValidator(
+                ["jef", "emb", "dst"]
+            ),
+            catalog.validators.validate_file_size,
+        ],
+        null=True,
+        blank=True,
+        verbose_name="файл вышивки",
+        help_text="файл вышивки товара",
+    )
 
     class Meta:
         verbose_name = "товар"
@@ -299,41 +321,6 @@ class Product(AbstractModel):
 
     def __str__(self):
         return f"Товар({self.name})"
-
-
-class ProductEmbroideryFile(django.db.models.Model):
-    product = django.db.models.ForeignKey(
-        Product,
-        on_delete=django.db.models.CASCADE,
-        verbose_name="товар",
-        help_text="товар файла вышивки",
-        related_name="embroidery_file",
-        related_query_name="embroidery_file",
-    )
-    embroidery = django.db.models.FileField(
-        upload_to=get_path_file,
-        validators=[
-            django.core.validators.FileExtensionValidator(
-                ["jef", "emb", "dst"]
-            )
-        ],
-        verbose_name="файл вышивки",
-        help_text="файл вышивки товара",
-    )
-    category = django.db.models.ForeignKey(
-        Category,
-        on_delete=django.db.models.CASCADE,
-        verbose_name="категория",
-        help_text="категория файла вышивки",
-    )
-
-    class Meta:
-        verbose_name = "файл вышивки"
-        verbose_name_plural = "файлы вышивки"
-        unique_together = (
-            "product",
-            "category",
-        )
 
 
 class ProductImage(BaseImage):
@@ -662,13 +649,6 @@ class OrderManager(django.db.models.Manager):
             .order_by(ProductAdditionalImage.id.field.name)
             .values(ProductAdditionalImage.image.field.name)[:1]
         )
-        embroidery_subquery = ProductEmbroideryFile.objects.filter(
-            category=django.db.models.OuterRef(
-                f"{OrderItem.garment.field.name}__"
-                f"{Garment.category.field.name}"
-            ),
-            product=django.db.models.OuterRef(OrderItem.product.field.name),
-        ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
 
         return (
             self.filter(user=user)
@@ -693,9 +673,6 @@ class OrderManager(django.db.models.Manager):
                         matching_image=django.db.models.Subquery(
                             image_subquery
                         ),
-                        embroidery=django.db.models.Subquery(
-                            embroidery_subquery
-                        ),
                     )
                     .only(
                         (
@@ -718,6 +695,10 @@ class OrderManager(django.db.models.Manager):
                         (
                             f"{OrderItem.product.field.name}"
                             f"__{Product.name.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.embroidery.field.name}"
                         ),
                         OrderItem.quantity.field.name,
                         OrderItem.price.field.name,
@@ -761,13 +742,6 @@ class OrderManager(django.db.models.Manager):
         )
 
     def get_in_work_order_detail(self, order_id):
-        subquery = ProductEmbroideryFile.objects.filter(
-            category=django.db.models.OuterRef(
-                f"{OrderItem.garment.field.name}__"
-                f"{Garment.category.field.name}"
-            ),
-            product=django.db.models.OuterRef(OrderItem.product.field.name),
-        ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
         return (
             self.filter(id=order_id)
             .select_related(
@@ -787,9 +761,11 @@ class OrderManager(django.db.models.Manager):
                             f"__{Garment.color.field.name}"
                         ),
                         OrderItem.product.field.name,
-                    )
-                    .annotate(embroidery=django.db.models.Subquery(subquery))
-                    .only(
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.image.related.name}"
+                        ),
+                    ).only(
                         (
                             f"{OrderItem.garment.field.name}"
                             f"__{Garment.category.field.name}"
@@ -804,6 +780,10 @@ class OrderManager(django.db.models.Manager):
                             f"{OrderItem.product.field.name}"
                             f"__{Product.image.related.name}"
                             f"__{ProductAdditionalImage.image.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.embroidery.field.name}"
                         ),
                         (
                             f"{OrderItem.garment.field.name}"
@@ -831,17 +811,6 @@ class OrderManager(django.db.models.Manager):
         ).first()
 
     def get_paid_order_detail(self, order_id):
-        subquery = django.db.models.Subquery(
-            ProductEmbroideryFile.objects.filter(
-                product=django.db.models.OuterRef(
-                    OrderItem.product.field.name
-                ),
-                category=django.db.models.OuterRef(
-                    f"{OrderItem.garment.field.name}__"
-                    f"{Garment.category.field.name}"
-                ),
-            ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
-        )
         return (
             self.filter(id=order_id)
             .select_related(
@@ -872,9 +841,6 @@ class OrderManager(django.db.models.Manager):
                             f"__{Garment.category.field.name}"
                         ),
                     )
-                    .annotate(
-                        embroidery=subquery,
-                    )
                     .only(
                         (
                             f"{OrderItem.garment.field.name}"
@@ -885,6 +851,10 @@ class OrderManager(django.db.models.Manager):
                         (
                             f"{OrderItem.product.field.name}"
                             f"__{Product.name.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.embroidery.field.name}"
                         ),
                         (
                             f"{OrderItem.product.field.name}"
@@ -916,17 +886,6 @@ class OrderManager(django.db.models.Manager):
         ).first()
 
     def get_for_yookassa_webhook(self, payment_id):
-        subquery = django.db.models.Subquery(
-            ProductEmbroideryFile.objects.filter(
-                product=django.db.models.OuterRef(
-                    OrderItem.product.field.name
-                ),
-                category=django.db.models.OuterRef(
-                    f"{OrderItem.garment.field.name}__"
-                    f"{Garment.category.field.name}"
-                ),
-            ).values(ProductEmbroideryFile.embroidery.field.name)[:1]
-        )
         return (
             self.filter(payment_id=payment_id)
             .prefetch_related(
@@ -938,15 +897,15 @@ class OrderManager(django.db.models.Manager):
                             f"{OrderItem.garment.field.name}"
                             f"__{Garment.category.field.name}"
                         ),
-                    )
-                    .annotate(
-                        embroidery=subquery,
-                    )
-                    .only(
+                    ).only(
                         f"{OrderItem.order.field.name}__{Order.id.field.name}",
                         (
                             f"{OrderItem.product.field.name}"
                             f"__{Product.id.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.embroidery.field.name}"
                         ),
                         (
                             f"{OrderItem.garment.field.name}"

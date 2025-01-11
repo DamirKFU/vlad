@@ -36,9 +36,7 @@ def get_allowed_statuses(user):
     return allowed_statuses
 
 
-def handle_status_change(
-    order, new_status, user, error_comment=None
-):
+def handle_status_change(order, new_status, user, error_comment=None):
     old_status = order.status
     order.status = new_status
     order.save()

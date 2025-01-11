@@ -1,5 +1,6 @@
 import json
 
+import django.db.transaction
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.status
@@ -156,6 +157,7 @@ class StaffOrderDetailView(rest_framework.views.APIView):
             message="Заказ успешно получен",
         )
 
+    @django.db.transaction.atomic
     def post(self, request, order_id, *args, **kwargs):
         order = self.get_object()
         if not order:
@@ -188,6 +190,7 @@ class StaffOrderDetailView(rest_framework.views.APIView):
 
         return handler(order, request.data)
 
+    @django.db.transaction.atomic
     def delete(self, request, order_id, *args, **kwargs):
         order = self.get_object()
         if not order:

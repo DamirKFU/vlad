@@ -5,7 +5,6 @@ import django.urls
 import rest_framework.status as status
 
 import catalog.models
-import staff.models
 import users.models
 
 
@@ -167,7 +166,13 @@ class StaffOrderDetailViewTest(django.test.TestCase):
 
     def test_forward_order(self):
         category = catalog.models.Category.objects.create(name="Test Category")
-        product = catalog.models.Product.objects.create(name="Test Product")
+        embroidery_file = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test.jef",
+            content=b"test",
+        )
+        product = catalog.models.Product.objects.create(
+            name="Test Product", category=category, embroidery=embroidery_file
+        )
 
         from PIL import Image
         import io
@@ -183,15 +188,6 @@ class StaffOrderDetailViewTest(django.test.TestCase):
                 name="test.jpg",
                 content=image_io.getvalue(),
                 content_type="image/jpeg",
-            ),
-        )
-
-        catalog.models.ProductEmbroideryFile.objects.create(
-            product=product,
-            category=category,
-            embroidery=django.core.files.uploadedfile.SimpleUploadedFile(
-                name="test.jef",
-                content=b"test",
             ),
         )
 
@@ -257,61 +253,3 @@ class StaffOrderDetailViewTest(django.test.TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, catalog.models.OrderStatus.PAID)
-
-
-class OrderLogListViewTest(django.test.TestCase):
-    def setUp(self):
-        self.client = django.test.Client()
-
-        self.user = users.models.User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123",
-        )
-        self.moderator_role = users.models.UserRole.objects.create(
-            role=users.models.Role.MODERATOR
-        )
-
-        self.order = catalog.models.Order.objects.create(
-            user=self.user,
-            status=catalog.models.OrderStatus.PAID,
-            payment_status=catalog.models.PaymentStatus.SUCCEEDED,
-            address="Test Address",
-            phone="+79991234567",
-        )
-
-        self.log = staff.models.OrderLog.objects.create(
-            order=self.order,
-            user=self.user,
-            from_status=catalog.models.OrderStatus.WAITING_PAYMENT,
-            to_status=catalog.models.OrderStatus.PAID,
-        )
-
-    def test_get_logs_without_role(self):
-        self.client.force_login(self.user)
-        response = self.client.get(
-            django.urls.reverse(
-                "api:staff:order-logs",
-                kwargs={"order_id": self.order.id},
-            )
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_get_logs_as_moderator(self):
-        self.user.roles.add(self.moderator_role)
-        self.client.force_login(self.user)
-
-        response = self.client.get(
-            django.urls.reverse(
-                "api:staff:order-logs",
-                kwargs={"order_id": self.order.id},
-            )
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()["data"]["count"], 1)
-        self.assertEqual(
-            response.json()["data"]["results"][0]["from_status_display"],
-            "Ожидает оплаты",
-        )

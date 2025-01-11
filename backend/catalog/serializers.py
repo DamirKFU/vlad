@@ -501,7 +501,7 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
                 catalog.models.OrderStatus.PAID,
             )
             has_embroidery = any(
-                item.embroidery for item in instance.items.all()
+                item.product.embroidery for item in instance.items.all()
             )
             if not has_embroidery:
                 instance.status = catalog.models.OrderStatus.PAID

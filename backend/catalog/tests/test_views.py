@@ -263,6 +263,7 @@ class AddToCartViewTest(django.test.TestCase):
         cls.product = catalog.models.Product.objects.create(
             name="Тестовый продукт",
             price=100,
+            category=cls.category,
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
@@ -541,6 +542,7 @@ class CreateOrderViewTest(django.test.TestCase):
         cls.product = catalog.models.Product.objects.create(
             name="Test Product",
             price=100,
+            category=cls.category,
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
@@ -621,7 +623,7 @@ class CartViewTest(django.test.TestCase):
             name="Зеленый", color="#008000"
         )
         cls.product = catalog.models.Product.objects.create(
-            name="Тестовый продукт", price=100
+            name="Тестовый продукт", price=100, category=cls.category
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
@@ -931,6 +933,7 @@ class OrderHistoryViewTest(django.test.TestCase):
         cls.product = catalog.models.Product.objects.create(
             name="Тестовый продукт",
             price=100,
+            category=cls.category,
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
