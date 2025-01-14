@@ -19,6 +19,7 @@ import core.utils
 class GarmentListView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
 
+    @django.db.transaction.atomic
     def get(self, request, *args, **kwargs):
         garments_data = catalog.models.Garment.objects.all_items()
         data = catalog.utils.get_structured_garments(garments_data)

@@ -19,6 +19,9 @@ import OrderDetail from './pages/OrderDetail';
 import StaffOrders from './pages/StaffOrders';
 import StaffOrderDetail from './pages/StaffOrderDetail';
 import TelegramAuth from './pages/TelegramAuth';
+import Support from './pages/Support';
+import ChatList from './pages/ChatList';
+import StaffChats from './pages/StaffChats';
 
 
 function Logout() {
@@ -60,6 +63,30 @@ function App() {
           <Route path="/staff/orders" element={<StaffOrders />} />
           <Route path="/staff/orders/:orderId" element={<StaffOrderDetail />} />
           <Route path="/telegram-auth" element={<TelegramAuth />} />
+          <Route 
+            path="/support" 
+            element={
+              <ProtectedRoute>
+                <ChatList />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/support/:chatId" 
+            element={
+              <ProtectedRoute>
+                <Support />
+              </ProtectedRoute>
+            } 
+          />
+          <Route
+            path="/staff/support"
+            element={
+              <ProtectedRoute>
+                <StaffChats />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
   )

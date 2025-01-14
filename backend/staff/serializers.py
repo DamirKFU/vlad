@@ -4,6 +4,7 @@ import rest_framework.serializers
 import catalog.models
 import staff.models
 import staff.utils
+import support.models
 
 
 class StaffOrderSerializer(rest_framework.serializers.ModelSerializer):
@@ -309,3 +310,35 @@ class InDeliveryOrderSerializer(rest_framework.serializers.ModelSerializer):
             "status_display",
             catalog.models.Order.tracking_code.field.name,
         ]
+
+
+class StaffChatResponsibleUserSerializer(
+    rest_framework.serializers.Serializer
+):
+    chat_id = rest_framework.serializers.IntegerField()
+
+    def validate(self, data):
+        chat = support.models.Chat.objects.filter(id=data["chat_id"]).first()
+        if chat is None:
+            raise rest_framework.serializers.ValidationError(
+                {"chat_id": "Чат не найден"}
+            )
+
+        if chat.responsible_users.exists():
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "У чата уже есть ответственные"}
+            )
+
+        return {"chat": chat}
+
+    def save(self, **kwargs):
+        chat = self.validated_data["chat"]
+        user = self.context["request"].user
+        chat.responsible_users.add(user)
+        support.models.Message.objects.create(
+            chat=chat,
+            user=user,
+            content=f"Сотрудник {user.username} присоединился к чату",
+            is_system=True,
+        )
+        return chat

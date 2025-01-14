@@ -2,7 +2,9 @@ import os
 import pathlib
 
 import dotenv
+import urllib3
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 dotenv.load_dotenv()
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
@@ -23,6 +25,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "sorl.thumbnail",
+    "channels",
+    "django_elasticsearch_dsl",
     "django_cleanup.apps.CleanupConfig",
     "api.apps.ApiConfig",
     "catalog.apps.CatalogConfig",
@@ -31,6 +35,7 @@ INSTALLED_APPS = [
     "staff.apps.StaffConfig",
     "core.apps.CoreConfig",
     "telegram_bot.apps.TelegramBotConfig",
+    "support.apps.SupportConfig",
 ]
 
 MIDDLEWARE = [
@@ -116,11 +121,13 @@ if DEBUG:
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
+        "ws://localhost:8000",
     ]
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
+        "ws://localhost:8000",
     ]
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
@@ -225,3 +232,25 @@ LOGGING = {
 ELASTICSEARCH_HOST = "https://localhost:9200"
 ELASTICSEARCH_USER = "elastic"
 ELASTICSEARCH_PASSWORD = "WZNXKNqpcaQtrCigSno9"
+
+ELASTICSEARCH_DSL = {
+    "default": {
+        "hosts": ELASTICSEARCH_HOST,
+        "http_auth": (ELASTICSEARCH_USER, ELASTICSEARCH_PASSWORD),
+        "verify_certs": False,
+    }
+}
+
+ELASTICSEARCH_DSL_AUTOSYNC = True
+ELASTICSEARCH_DSL_AUTO_REFRESH = True
+
+ASGI_APPLICATION = "backend.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": ["redis://localhost:6379/2"],
+            "symmetric_encryption_keys": [SECRET_KEY],
+        },
+    },
+}

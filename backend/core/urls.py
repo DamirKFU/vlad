@@ -1,3 +1,5 @@
+import django.conf
+import django.conf.urls.static
 import django.contrib.admin
 import django.urls
 
@@ -15,5 +17,13 @@ urlpatterns = [
         "task/<str:task_id>/",
         core.views.TaskStatusView.as_view(),
         name="task-status",
+    ),
+    django.urls.path(
+        "api/staff/",
+        django.urls.include("staff.urls", namespace="staff"),
+    ),
+    django.urls.path(
+        "api/support/",
+        django.urls.include("support.urls", namespace="support"),
     ),
 ]

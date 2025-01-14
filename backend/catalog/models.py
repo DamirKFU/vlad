@@ -510,13 +510,10 @@ class CartManager(django.db.models.Manager):
                     Cart.items.field.related_query_name(),
                     queryset=CartItem.objects.select_related(
                         CartItem.product.field.name,
-                    )
-                    .select_related(
-                        CartItem.garment.field.name,
-                    )
-                    .select_for_update(),
+                    ),
                 ),
             )
+            .select_for_update()
             .first()
         )
 

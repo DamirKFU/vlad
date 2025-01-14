@@ -1,3 +1,4 @@
+import django.db.models
 import rest_framework.serializers
 
 import catalog.models
@@ -255,51 +256,57 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
                 {"form_error": "У вас уже есть заказ в ожидании оплаты."}
             )
 
-        cart_items = cart.items.all()
+        cart_items = list(cart.items.all())
         if not cart_items:
             raise rest_framework.serializers.ValidationError(
                 {"form_error": "Корзина пуста"}
             )
 
+        garments_ids = [cart_item.garment_id for cart_item in cart_items]
+        garments = list(
+            catalog.models.Garment.objects.filter(id__in=garments_ids)
+            .select_for_update()
+            .all()
+        )
+        garments_dict = {garment.id: garment for garment in garments}
+
         for cart_item in cart_items:
-            garment = cart_item.garment
+            garment = garments_dict[cart_item.garment_id]
             if garment.count < cart_item.quantity:
                 raise rest_framework.serializers.ValidationError(
                     {"count": "Недостаточно товара"}
                 )
 
-        data["cart"] = cart
+        data["items"] = cart_items
+        data["garments"] = garments_dict
         return data
 
     def create(self, validated_data):
         order = catalog.models.Order.objects.create(
-            user=validated_data["cart"].user,
+            user_id=self.context["user_id"],
             address=validated_data["address"],
             phone=validated_data["phone"],
         )
 
         def create_order_item_and_update_garment(item, order):
-            garment = item.garment
-            return (
-                catalog.models.OrderItem(
-                    order=order,
-                    product=item.product,
-                    garment=garment,
-                    quantity=item.quantity,
-                    price=item.product.price + garment.price,
-                ),
-                setattr(
-                    garment,
-                    catalog.models.Garment.count.field.name,
-                    garment.count - item.quantity,
-                )
-                or garment,
+            garment = validated_data["garments"][item.garment_id]
+            order_item = catalog.models.OrderItem(
+                order=order,
+                product=item.product,
+                garment=garment,
+                quantity=item.quantity,
+                price=item.product.price + garment.price,
             )
+            garment.count = (
+                django.db.models.F(catalog.models.Garment.count.field.name)
+                - item.quantity
+            )
+            return order_item, garment
 
         order_items, garments = zip(
             *[
                 create_order_item_and_update_garment(item, order)
-                for item in validated_data["cart"].items.all()
+                for item in validated_data["items"]
             ]
         )
 

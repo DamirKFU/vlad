@@ -40,4 +40,9 @@ urlpatterns = [
         users.views.PasswordResetConfirmView.as_view(),
         name="password_reset_confirm",
     ),
+    django.urls.path(
+        "search/",
+        users.views.UserSearchView.as_view(),
+        name="user_search",
+    ),
 ]

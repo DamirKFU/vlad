@@ -9,11 +9,13 @@ import rest_framework.views
 import catalog.models
 import core.elasticsearch
 import core.utils
+import staff.documets
 import staff.models
 import staff.pagination
 import staff.serializers
-import staff.services
 import staff.utils
+import support.models
+import support.serializers
 import users.models
 
 
@@ -376,13 +378,86 @@ class OrderLogListView(rest_framework.generics.ListAPIView):
             )
 
         page = int(page)
-        service = staff.services.OrderLogService(
-            order_id=order_id,
-            page_size=self.pagination_class.page_size,
-            current_page=page,
+        page_size = self.pagination_class.page_size
+        response = staff.documets.OrderLogDocument.search_by_order_id(
+            order_id, page_size, page
         )
+        total = response.hits.total.value
+        logs = [
+            {
+                "username": hit.username,
+                "from_status": hit.from_status,
+                "to_status": hit.to_status,
+                "error_comment": hit.error_comment,
+                "created_at": hit.created_at,
+            }
+            for hit in response
+        ]
+        total_pages = (total + page_size - 1) // page_size
+
+        data = {
+            "count": total,
+            "total_pages": total_pages,
+            "next": page < total_pages,
+            "previous": page > 1,
+            "results": logs,
+        }
 
         return core.utils.success_response(
-            data=service.get_logs(),
+            data=data,
             message="История изменений успешно получена",
+        )
+
+
+class StaffChatListView(rest_framework.generics.ListAPIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+    serializer_class = support.serializers.ChatSerializer
+
+    def get_queryset(self):
+        return support.models.Chat.objects.get_chats_for_staff(
+            self.request.user, self.kwargs.get("chat_type")
+        )
+
+    def get(self, request, *args, **kwargs):
+        chat_type = self.kwargs.get("chat_type")
+
+        if chat_type not in ["my", "unassigned", "assigned"]:
+            return core.utils.error_response(message="Неверный тип чатов")
+
+        if chat_type == "assigned" and not request.user.is_superuser:
+            return core.utils.error_response(message="Недостаточно прав")
+
+        try:
+            data = super().get(request, *args, **kwargs).data
+        except Exception:
+            return core.utils.error_response(message="Ошибка получения чатов")
+
+        return core.utils.success_response(
+            message="Чаты получены",
+            data=data,
+        )
+
+    @django.db.transaction.atomic
+    def post(self, request, *args, **kwargs):
+        chat_type = self.kwargs.get("chat_type")
+
+        if chat_type != "unassigned":
+            return core.utils.error_response(
+                message="Действие доступно только для чатов без ответственных"
+            )
+
+        serializer = staff.serializers.StaffChatResponsibleUserSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        if not serializer.is_valid():
+            return core.utils.error_response(
+                message="Ошибка валидации",
+                serializer_errors=serializer.errors,
+            )
+
+        serializer.save()
+
+        return core.utils.success_response(
+            message="Вы успешно присоединились к чату"
         )

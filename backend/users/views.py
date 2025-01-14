@@ -9,6 +9,7 @@ import rest_framework.views
 
 import core.tasks
 import core.utils
+import users.documents
 import users.models
 import users.serializers
 
@@ -133,4 +134,46 @@ class PasswordResetConfirmView(rest_framework.generics.GenericAPIView):
         return core.utils.success_response(
             message="Пароль успешно изменен.",
             http_status=rest_framework.status.HTTP_200_OK,
+        )
+
+
+class UserSearchView(rest_framework.views.APIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get("query", "")
+        if len(query) < 2:
+            return core.utils.success_response(data=[])
+
+        query = query.lower()
+        search = users.documents.UserDocument.search().query(
+            "bool",
+            should=[
+                {"match": {"username": {"query": query, "boost": 3}}},
+                {
+                    "fuzzy": {
+                        "username": {
+                            "value": query,
+                            "fuzziness": "AUTO",
+                            "prefix_length": 2,
+                        }
+                    }
+                },
+                {"prefix": {"username": {"value": query, "boost": 2}}},
+                {"wildcard": {"username": f"*{query}*"}},
+            ],
+            minimum_should_match=1,
+        )[:3]
+
+        response = search.execute()
+
+        users_data = [
+            {
+                "id": hit.id,
+                "username": hit.username,
+            }
+            for hit in response
+        ]
+        return core.utils.success_response(
+            message="Пользователи найдены", data=users_data
         )

@@ -41,4 +41,9 @@ urlpatterns = [
         django.urls.include("telegram_bot.urls", "telegram_bot"),
         name="telegram_bot",
     ),
+    django.urls.path(
+        "support/",
+        django.urls.include("support.urls", "support"),
+        name="support",
+    ),
 ]
