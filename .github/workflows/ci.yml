@@ -31,16 +31,14 @@ jobs:
         ports:
           - 9200:9200
         options: >-
-         --health-cmd="curl -s https://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"'"
-         --health-interval=10s
-         --health-timeout=5s
-         --health-retries=5
+          --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
         env:
           discovery.type: single-node
           ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-          xpack.security.enabled: "true"
-          xpack.security.http.ssl.enabled: "true"
-          xpack.security.http.ssl.verification_mode: "none"
+          xpack.security.enabled: "false"
       
 
     steps:

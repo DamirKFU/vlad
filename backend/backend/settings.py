@@ -229,7 +229,7 @@ LOGGING = {
     },
 }
 
-ELASTICSEARCH_HOST = "https://localhost:9200"
+ELASTICSEARCH_HOST = "http://localhost:9200"
 ELASTICSEARCH_USER = "elastic"
 ELASTICSEARCH_PASSWORD = "WZNXKNqpcaQtrCigSno9"
 
