@@ -115,7 +115,7 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_CREDENTIALS = True
 
-if not DEBUG:
+if DEBUG:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     CSRF_TRUSTED_ORIGINS = [
         "http://localhost:3000",
