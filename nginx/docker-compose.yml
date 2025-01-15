@@ -1,0 +1,7 @@
+services:
+  nginx:
+    build: .
+    ports:
+      - "443:443"
+    volumes:
+      - ./media:/usr/share/nginx/html/media

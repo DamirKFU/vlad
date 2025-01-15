@@ -74,11 +74,11 @@ WSGI_APPLICATION = "backend.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "myproject",
-        "USER": "myprojectuser",
-        "PASSWORD": "password",
-        "HOST": "localhost",
-        "PORT": "",
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
     }
 }
 
@@ -115,7 +115,7 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_CREDENTIALS = True
 
-if DEBUG:
+if not DEBUG:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     CSRF_TRUSTED_ORIGINS = [
         "http://localhost:3000",
@@ -134,13 +134,9 @@ if DEBUG:
     INTERNAL_IPS = os.getenv("DJANGO_INTERNAL_IPS", "127.0.0.1").split(",")
 
 else:
-    host = os.getenv("HOST")
-    port = os.getenv("PORT")
-    ALLOWED_HOSTS = [host]
-    CSRF_TRUSTED_ORIGINS = [f"https://{host}:{port}"]
-    CORS_ALLOWED_ORIGINS = [
-        f"https://{host}:{port}",
-    ]
+    ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
+    CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
+    CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS").split(",")
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SAMESITE = "None"
@@ -178,7 +174,7 @@ MEDIA_URL = "/media/"
 
 STATIC_URL = "static/django/"
 
-STATIC_ROOT = "../staticfiles"
+STATIC_ROOT = BASE_DIR.parent / "nginx" / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -188,6 +184,7 @@ YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
 SITE_URL = "http://localhost:3000"
 
+USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -237,9 +234,9 @@ LOGGING = {
     },
 }
 
-ELASTICSEARCH_HOST = "http://localhost:9200"
-ELASTICSEARCH_USER = "elastic"
-ELASTICSEARCH_PASSWORD = "WZNXKNqpcaQtrCigSno9"
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
+ELASTICSEARCH_USER = os.getenv("ELASTICSEARCH_USER")
+ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD")
 
 ELASTICSEARCH_DSL = {
     "default": {
@@ -262,3 +259,7 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+ADMINS = [
+    ("admin", "admin@admin.com"),
+]

@@ -1,0 +1,52 @@
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/cert.pem:/etc/nginx/cert.pem
+      - ./nginx/key.pem:/etc/nginx/key.pem
+      - ./media:/usr/share/nginx/html/media  # Общий том для медиафайлов
+    depends_on:
+      - django
+
+  django:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - ./media:/app/media  # Общий том для медиафайлов
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env  # Используем файл .env
+    environment:
+      - POSTGRES_HOST=db
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+    depends_on:
+      - db
+      - elasticsearch
+
+  db:
+    image: postgres:latest
+    env_file:
+      - ./backend/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+
+volumes:
+  postgres_data:
+  elasticsearch_data:
