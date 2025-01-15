@@ -72,6 +72,9 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         DEBUG: True
         SITE_URL: https://test.com
+        ELASTICSEARCH_HOST: http://localhost:9200
+        ELASTICSEARCH_USER: elastic
+        ELASTICSEARCH_PASSWORD: WZNXKNqpcaQtrCigSno9
       run: |
         cd backend
         python manage.py test
