@@ -1,5 +1,6 @@
 import celery
 import celery.states
+import celery_once
 import django.db
 import django.utils
 
@@ -24,7 +25,7 @@ def create_order_task_sync(self, data, user_id):
     }
 
 
-@celery.shared_task(bind=True)
+@celery.shared_task(bind=True, base=celery_once.QueueOnce)
 @django.db.transaction.atomic
 def create_order_task(self, data, user_id):
     return create_order_task_sync(self, data, user_id)
