@@ -282,7 +282,6 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
         data["garments"] = garments_dict
         return data
 
-    @django.db.transaction.atomic
     def create(self, validated_data):
         order = catalog.models.Order.objects.create(
             user_id=self.context["user_id"],

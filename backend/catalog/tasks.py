@@ -1,10 +1,12 @@
 import celery
 import celery.states
 import celery_once
+import django.db.transaction
 
 import catalog.serializers
 
 
+@django.db.transaction.atomic
 def create_order_task_sync(self, data, user_id):
     serializer = catalog.serializers.CreateOrderSerializer(
         data=data, context={"user_id": user_id}
