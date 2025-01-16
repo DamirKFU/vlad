@@ -6,7 +6,7 @@ services:
     volumes:
       - ./nginx/cert.pem:/etc/nginx/cert.pem
       - ./nginx/key.pem:/etc/nginx/key.pem
-      - ./media:/usr/share/nginx/html/media  # Общий том для медиафайлов
+      - ./media:/usr/share/nginx/html/media
     depends_on:
       - django
 
@@ -16,7 +16,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/app
-      - ./media:/app/media  # Общий том для медиафайлов
+      - ./media:/app/media
     ports:
       - "8000:8000"
     env_file:
@@ -27,6 +27,31 @@ services:
     depends_on:
       - db
       - elasticsearch
+      - redis
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+  
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: sh -c "cd backend && celery -A backend worker --loglevel=info"
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  react:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - django
 
   db:
     image: postgres:latest

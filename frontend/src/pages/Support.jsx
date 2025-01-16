@@ -17,7 +17,7 @@ function Support() {
 
     useEffect(() => {
         const csrftoken = Cookies.get('csrftoken');
-        const ws = new WebSocket(`ws://localhost:8000/ws/support/chat/${chatId}/`, ['X-CSRFToken', csrftoken]);
+        const ws = new WebSocket(`wss://127.0.0.1/ws/support/chat/${chatId}/`, ['X-CSRFToken', csrftoken]);
 
         ws.onopen = () => {
             console.log('WebSocket соединение установлено');

@@ -19,4 +19,5 @@ redis==5.0.3
 sorl-thumbnail==12.10.0
 telebot==0.0.5
 yookassa==3.4.3
-uvicorn==0.34.0
+uvicorn[standard]==0.34.0
+cryptography==44.0.0

@@ -11,7 +11,7 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 DEFAULT_VERIFED_EMAIL = False
 
@@ -129,11 +129,19 @@ if DEBUG:
         "http://localhost:3001",
         "ws://localhost:8000",
     ]
+    MEDIA_ROOT = BASE_DIR / "media"
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
     INTERNAL_IPS = os.getenv("DJANGO_INTERNAL_IPS", "127.0.0.1").split(",")
+    CELERY_BROKER_URL = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+    CHANNEL_LAYERS_HOST = "redis://localhost:6379/2"
+    ELASTICSEARCH_HOST = "http://localhost:9200"
+    ELASTICSEARCH_USER = "elastic"
+    ELASTICSEARCH_PASSWORD = "WZNXKNqpcaQtrCigSno9"
 
 else:
+    MEDIA_ROOT = "/app/media"
     ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
     CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
     CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS").split(",")
@@ -143,7 +151,12 @@ else:
     SESSION_COOKIE_SAMESITE = "None"
     CSRF_COOKIE_HTTPONLY = False
     SESSION_COOKIE_HTTPONLY = True
-
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+    CHANNEL_LAYERS_HOST = os.getenv("CHANNEL_LAYERS_HOST")
+    ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
+    ELASTICSEARCH_USER = os.getenv("ELASTICSEARCH_USER")
+    ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD")
 
 AUTH_USER_MODEL = "users.User"
 
@@ -169,7 +182,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
 
 STATIC_URL = "static/django/"
@@ -186,9 +198,6 @@ SITE_URL = "http://localhost:3000"
 
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 CELERY_ONCE = {
     "backend": "celery_once.backends.Redis",
@@ -234,10 +243,6 @@ LOGGING = {
     },
 }
 
-ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
-ELASTICSEARCH_USER = os.getenv("ELASTICSEARCH_USER")
-ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD")
-
 ELASTICSEARCH_DSL = {
     "default": {
         "hosts": ELASTICSEARCH_HOST,
@@ -254,7 +259,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": ["redis://localhost:6379/2"],
+            "hosts": [CHANNEL_LAYERS_HOST],
             "symmetric_encryption_keys": [SECRET_KEY],
         },
     },
