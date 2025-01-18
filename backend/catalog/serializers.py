@@ -1,3 +1,4 @@
+from django.conf import settings
 import django.db.models
 import django.db.transaction
 import rest_framework.serializers
@@ -318,9 +319,10 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
         )
         order.total_sum = sum(item.total_price for item in order_items)
         yookassa_service = payments.services.YooKassaService()
+        site_url = django.conf.settings.SITE_URL
         payment_data = yookassa_service.create_payment(
             order=order,
-            return_url=f"http://localhost:3000/orders/{order.id}",
+            return_url=f"{site_url}/orders/{order.id}",
         )
 
         order.payment_id = payment_data["id"]

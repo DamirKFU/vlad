@@ -194,7 +194,7 @@ YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
 
-SITE_URL = "http://localhost:3000"
+SITE_URL = "https://127.0.0.1"
 
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -215,13 +215,15 @@ LOGGING = {
     "formatters": {
         "json": {
             "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         }
     },
     "handlers": {
         "logstash": {
             "level": "INFO",
             "class": "logstash.TCPLogstashHandler",
-            "host": "localhost",
+            "host": "logstash",
             "port": 5000,
             "version": 1,
             "message_type": "django",
@@ -236,7 +238,17 @@ LOGGING = {
     },
     "loggers": {
         "grafana": {
-            "handlers": ["logstash"],
+            "handlers": ["logstash", "console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django": {
+            "handlers": ["logstash", "console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["logstash", "console"],
             "level": "INFO",
             "propagate": True,
         },
@@ -268,3 +280,10 @@ CHANNEL_LAYERS = {
 ADMINS = [
     ("admin", "admin@admin.com"),
 ]
+
+# Grafana settings
+GRAFANA_URL = os.getenv('GRAFANA_URL', 'http://grafana:3000')
+GRAFANA_API_KEY = os.getenv('GRAFANA_API_KEY', '')  # Добавим позже через интерфейс Grafana
+
+# Добавляем настройки для индексов Elasticsearch
+ELASTICSEARCH_LOG_INDEX_PATTERN = "django-logs-*"
