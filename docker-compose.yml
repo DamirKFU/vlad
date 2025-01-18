@@ -7,6 +7,8 @@ services:
       - ./nginx/cert.pem:/etc/nginx/cert.pem
       - ./nginx/key.pem:/etc/nginx/key.pem
       - ./media:/usr/share/nginx/html/media
+      - ./nginx/html:/usr/share/nginx/html
+      - static_volume:/usr/share/nginx/html/staticfiles
     depends_on:
       - django
 
@@ -17,10 +19,11 @@ services:
     volumes:
       - .:/app
       - ./media:/app/media
+      - static_volume:/app/backend/staticfiles
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/.env  # Используем файл .env
+      - ./backend/.env
     environment:
       - POSTGRES_HOST=db
       - ELASTICSEARCH_HOST=http://elasticsearch:9200
@@ -98,7 +101,25 @@ services:
     depends_on:
       - elasticsearch
 
+  backup:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.backup
+    volumes:
+      - ./backups:/backups:rw
+      - ./media:/app/media:ro
+      - ./backend/scripts:/scripts:ro
+    env_file:
+      - ./backend/.env
+    user: root
+    networks:
+      - default
+    depends_on:
+      - db
+
 volumes:
   postgres_data:
   elasticsearch_data:
   grafana_data:
+  backups:
+  static_volume:

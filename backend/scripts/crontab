@@ -1,0 +1,9 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+POSTGRES_HOST=db
+POSTGRES_USER=myprojectuser
+POSTGRES_DB=myproject
+POSTGRES_PASSWORD=password
+PGPASSWORD=password
+
+*/5 * * * * root /scripts/backup.sh >> /var/log/cron.log 2>&1

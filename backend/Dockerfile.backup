@@ -1,0 +1,30 @@
+FROM postgres:latest
+
+# Устанавливаем необходимые пакеты
+RUN apt-get update && \
+    apt-get install -y \
+    cron \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создаем директории и файлы
+RUN mkdir -p /scripts /backups && \
+    touch /var/log/cron.log
+
+# Копируем скрипты
+COPY scripts/backup.sh /scripts/
+COPY scripts/crontab /etc/cron.d/backup-cron
+
+# Устанавливаем права
+RUN chmod 755 /scripts/backup.sh && \
+    chmod 644 /etc/cron.d/backup-cron && \
+    chmod -R 777 /backups && \
+    chmod 777 /var/log/cron.log && \
+    chmod 755 /scripts && \
+    chown -R root:root /scripts
+
+# Создаем пустую строку в конец crontab файла
+RUN echo "" >> /etc/cron.d/backup-cron
+
+# Запускаем cron и выводим логи
+CMD ["bash", "-c", "env >> /etc/environment && cron && tail -f /var/log/cron.log"]

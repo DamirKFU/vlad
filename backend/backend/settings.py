@@ -48,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "users.middleware.EnsureSessionKeyMiddleware",
+    "core.middleware.MaintenanceModeMiddleware",
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -184,9 +185,8 @@ USE_TZ = True
 
 MEDIA_URL = "/media/"
 
-STATIC_URL = "static/django/"
-
-STATIC_ROOT = BASE_DIR.parent / "nginx" / "staticfiles"
+STATIC_URL = '/static/django/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
