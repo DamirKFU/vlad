@@ -281,9 +281,7 @@ ADMINS = [
     ("admin", "admin@admin.com"),
 ]
 
-# Grafana settings
-GRAFANA_URL = os.getenv('GRAFANA_URL', 'http://grafana:3000')
-GRAFANA_API_KEY = os.getenv('GRAFANA_API_KEY', '')  # Добавим позже через интерфейс Grafana
+GRAFANA_URL = os.getenv("GRAFANA_URL", "http://grafana:3000")
+GRAFANA_API_KEY = os.getenv("GRAFANA_API_KEY", None)
 
-# Добавляем настройки для индексов Elasticsearch
 ELASTICSEARCH_LOG_INDEX_PATTERN = "django-logs-*"

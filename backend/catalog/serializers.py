@@ -1,4 +1,3 @@
-from django.conf import settings
 import django.db.models
 import django.db.transaction
 import rest_framework.serializers
