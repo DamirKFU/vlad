@@ -6,7 +6,19 @@ import urllib3
 
 
 def is_true_env(env_name):
-    return os.environ.get(env_name) == "True"
+    data = os.environ.get(env_name)
+    if data is None:
+        raise ValueError(f"Environment variable {env_name} is not set")
+
+    return data.lower() == "true"
+
+
+def list_env(env_name):
+    data = os.environ.get(env_name)
+    if data is None:
+        raise ValueError(f"Environment variable {env_name} is not set")
+
+    return data.split(",")
 
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -21,11 +33,11 @@ DEBUG = is_true_env("DEBUG")
 
 DEFAULT_VERIFED_EMAIL = is_true_env("DEFAULT_VERIFED_EMAIL")
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(",")
+ALLOWED_HOSTS = list_env("ALLOWED_HOSTS")
 
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS").split(",")
+CSRF_TRUSTED_ORIGINS = list_env("CSRF_TRUSTED_ORIGINS")
 
-CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS").split(",")
+CORS_ALLOWED_ORIGINS = list_env("CORS_ALLOWED_ORIGINS")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
