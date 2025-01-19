@@ -86,11 +86,11 @@ WSGI_APPLICATION = "backend.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST"),
-        "PORT": os.getenv("POSTGRES_PORT"),
+        "NAME": os.getenv("POSTGRES_DB", "myproject"),
+        "USER": os.getenv("POSTGRES_USER", "myprojectuser"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "password"),
+        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }
 
@@ -182,8 +182,14 @@ SITE_URL = os.getenv("SITE_URL")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL",
+    "redis://localhost:6379/0",
+)
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND",
+    "redis://localhost:6379/0",
+)
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 CELERY_ONCE = {
@@ -230,9 +236,18 @@ LOGGING = {
     },
 }
 
-ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
-ELASTICSEARCH_USER = os.getenv("ELASTICSEARCH_USER")
-ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD")
+ELASTICSEARCH_HOST = os.getenv(
+    "ELASTICSEARCH_HOST",
+    "http://localhost:9200",
+)
+ELASTICSEARCH_USER = os.getenv(
+    "ELASTICSEARCH_USER",
+    "elastic",
+)
+ELASTICSEARCH_PASSWORD = os.getenv(
+    "ELASTICSEARCH_PASSWORD",
+    "WZNXKNqpcaQtrCigSno9",
+)
 
 ELASTICSEARCH_DSL = {
     "default": {
