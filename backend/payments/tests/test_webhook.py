@@ -35,7 +35,6 @@ class YooKassaWebhookTest(django.test.TestCase):
         )
         self.product = catalog.models.Product.objects.create(
             name="Test Product",
-            category=self.category,
         )
 
         self.order = catalog.models.Order.objects.create(

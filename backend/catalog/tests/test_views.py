@@ -1,1146 +1,932 @@
 import http
+import io
 import shutil
-import tempfile
-import unittest.mock
 
-import django.core.files.uploadedfile
+import django.db
 import django.test
 import django.urls
-import parameterized
-import PIL
+import PIL.Image
+import redis
 import rest_framework.test
 
 import catalog.models
-import catalog.tasks
+import catalog.utils
+import payments.services
+import users.documents
 import users.models
 
-
-MEDIA_ROOT = tempfile.mkdtemp()
-
-
-class ItemListViewTest(django.test.TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория",
-        )
-        cls.color = catalog.models.Color.objects.create(
-            name="Зеленый",
-            color="#008000",
-        )
-        cls.garment = catalog.models.Garment.objects.create(
-            category=cls.category,
-            color=cls.color,
-            size=catalog.models.Size.M,
-            count=10,
-        )
-
-    def setUp(self):
-        self.guest_client = rest_framework.test.APIClient()
-
-    def test_items_list_structure(self):
-        response = self.guest_client.get(
-            django.urls.reverse("api:catalog:garments"),
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.OK,
-            "Неверный код ответа",
-        )
-
-        data = response.data["data"]
-        self.assertIn(
-            self.category.name,
-            data,
-            "Категория отсутствует в ответе",
-        )
-        self.assertIn(
-            self.garment.size,
-            data[self.category.name],
-            "Размер отсутствует в ответе",
-        )
-        self.assertIn(
-            self.color.name,
-            data[self.category.name][self.garment.size],
-            "Цвет отсутствует в ответе",
-        )
-
-        garment_data = data[self.category.name][self.garment.size][
-            self.color.name
-        ]
-        self.assertEqual(
-            garment_data["count"],
-            self.garment.count,
-            "Неверное количество товара",
-        )
-        self.assertEqual(
-            garment_data["hex"],
-            self.color.color,
-            "Неверный hex цвета",
-        )
-        self.assertEqual(
-            garment_data["id"],
-            self.garment.id,
-            "Неверный id товара",
-        )
+TEST_MEDIA_ROOT = django.conf.settings.BASE_DIR / "test_media"
+TEST_CELERY_BROKER_URL = "redis://localhost:6379/10"
+TEST_CELERY_RESULT_BACKEND = "redis://localhost:6379/10"
+TEST_CELERY_ONCE = {
+    "backend": "celery_once.backends.Redis",
+    "settings": {
+        "url": TEST_CELERY_BROKER_URL,
+        "default_timeout": 60 * 10,
+    },
+}
 
 
-@django.test.override_settings(MEDIA_ROOT=MEDIA_ROOT)
-class ConstructorProductCreateViewTest(django.test.TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.user = users.models.User.objects.create_user(
-            username="testuser",
-            password="testpass",
-        )
-        cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория",
-        )
-        cls.color = catalog.models.Color.objects.create(
-            name="Зеленый",
-            color="#008000",
-        )
-        cls.garment = catalog.models.Garment.objects.create(
-            category=cls.category,
-            color=cls.color,
-            size=catalog.models.Size.M,
-            count=10,
-        )
-
-    def setUp(self):
-        self.guest_client = rest_framework.test.APIClient()
-        self.authorized_client = rest_framework.test.APIClient()
-        self.authorized_client.force_authenticate(user=self.user)
-
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            image = PIL.Image.new("RGB", (100, 100))
-            image.save(f, "PNG")
-            f.seek(0)
-            self.test_image = (
-                django.core.files.uploadedfile.SimpleUploadedFile(
-                    name="test.png", content=f.read(), content_type="image/png"
-                )
-            )
-
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            image = PIL.Image.new("RGB", (100, 100))
-            image.save(f, "PNG")
-            f.seek(0)
-            self.test_embroidery_image = (
-                django.core.files.uploadedfile.SimpleUploadedFile(
-                    name="embroidery.png",
-                    content=f.read(),
-                    content_type="image/png",
-                )
-            )
-
-    @classmethod
-    def tearDownClass(cls):
-        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
-        super().tearDownClass()
-
-    def test_unauthorized_create(self):
-        response = self.guest_client.post(
-            django.urls.reverse("api:catalog:constructor-product-create"),
-            {
-                "garment_id": self.garment.id,
-                "image": self.test_image,
-                "embroidery_image": self.test_embroidery_image,
-            },
-            format="multipart",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.FORBIDDEN,
-            "Неавторизованный пользователь может создать товар",
-        )
-
-    def test_authorized_create(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:constructor-product-create"),
-            {
-                "garment_id": self.garment.id,
-                "image": self.test_image,
-                "embroidery_image": self.test_embroidery_image,
-            },
-            format="multipart",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Ошибка при создании товара",
-        )
-        self.assertIn(
-            "id",
-            response.data["data"],
-            "В ответе отсутствует id созданного товара",
-        )
-
-        constructor_product = catalog.models.ConstructorProduct.objects.get(
-            id=response.data["data"]["id"],
-        )
-        self.assertTrue(
-            constructor_product.image.image,
-            "Изображение продукта не было сохранено",
-        )
-        self.assertTrue(
-            constructor_product.embroidery_image.image,
-            "Изображение вышивки не было сохранено",
-        )
-
-    def test_create_with_invalid_item_id(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:constructor-product-create"),
-            {
-                "garment_id": 99999,
-                "image": self.test_image,
-                "embroidery_image": self.test_embroidery_image,
-            },
-            format="multipart",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Несуществующий товар должен возвращать 404",
-        )
-
-    def test_create_without_images(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:constructor-product-create"),
-            {
-                "garment_id": self.garment.id,
-            },
-            format="multipart",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Создание без изображений должно возвращать ошибку",
-        )
-
-    def test_create_without_embroidery_image(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:constructor-product-create"),
-            {
-                "garment_id": self.garment.id,
-                "image": self.test_image,
-            },
-            format="multipart",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Ошибка при создании товара без изображения вышивки",
-        )
-
-        constructor_product = catalog.models.ConstructorProduct.objects.get(
-            id=response.data["data"]["id"],
-        )
-        self.assertTrue(
-            constructor_product.image.image,
-            "Изображение продукта не было сохранено",
-        )
-        self.assertFalse(
-            hasattr(constructor_product, "embroidery_image"),
-            "Изображение вышивки не должно быть создано",
-        )
+def create_test_image():
+    image = PIL.Image.new("RGB", (100, 100), color="red")
+    image_bytes = io.BytesIO()
+    image.save(image_bytes, format="JPEG")
+    image_bytes.seek(0)
+    return image_bytes
 
 
-class AddToCartViewTest(django.test.TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.user = users.models.User.objects.create_user(
-            username="testuser",
-            password="testpass",
-        )
-        cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория",
-        )
-        cls.color = catalog.models.Color.objects.create(
-            name="Зеленый",
-            color="#008000",
-        )
-        cls.product = catalog.models.Product.objects.create(
-            name="Тестовый продукт",
-            price=100,
-            category=cls.category,
-        )
-        cls.garment = catalog.models.Garment.objects.create(
-            category=cls.category,
-            color=cls.color,
-            size=catalog.models.Size.M,
-            price=50,
-            count=10,
-        )
-        cls.product.garments.add(cls.garment)
-
-    def setUp(self):
-        self.guest_client = rest_framework.test.APIClient()
-        self.authorized_client = rest_framework.test.APIClient()
-        self.authorized_client.force_authenticate(user=self.user)
-
-    def test_unauthorized_add_to_cart(self):
-        response = self.guest_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": self.garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.FORBIDDEN,
-            "Неавторизованный пользователь может добавить товар в корзину",
-        )
-
-    def test_add_to_cart_success(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": self.garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Ошибка при добавлении товара в корзину",
-        )
-        self.assertEqual(
-            response.data["message"],
-            "Товар успешно добавлен в корзину",
-            "Неверное сообщение об успешном добавлении",
-        )
-        self.assertEqual(
-            response.data["data"]["quantity"],
-            1,
-            "Неверное количество товара",
-        )
-        self.assertEqual(
-            response.data["data"]["total_price"],
-            150,
-            "Неверная общая стоимость",
-        )
-
-    def test_add_to_cart_invalid_product(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": 99999,
-                "id_garment": self.garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при несуществующем продукте",
-        )
-        self.assertEqual(
-            response.data["errors"]["fields"]["id_product"],
-            "Продукт не найден",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_add_to_cart_invalid_garment(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": 99999,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при несуществующей одежде",
-        )
-        self.assertEqual(
-            response.data["errors"]["fields"]["id_garment"],
-            "Одежда не найдена",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_add_to_cart_garment_not_belongs_to_product(self):
-        other_garment = catalog.models.Garment.objects.create(
-            category=self.category,
-            color=self.color,
-            size=catalog.models.Size.L,
-            price=50,
-            count=10,
-        )
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": other_garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при несоответствии одежды продукту",
-        )
-        self.assertEqual(
-            response.data["errors"]["form_error"],
-            "Данная одежда не принадлежит этому товару",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_add_to_cart_increment_quantity(self):
-        url = django.urls.reverse("api:catalog:cart-add")
-        data = {
-            "id_product": self.product.id,
-            "id_garment": self.garment.id,
-        }
-
-        self.authorized_client.post(url, data)
-
-        response = self.authorized_client.post(url, data)
-
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Неверный код ответа при повторном добавлении",
-        )
-        self.assertEqual(
-            response.data["data"]["quantity"],
-            2,
-            "Неверное количество товара после повторного добавления",
-        )
-        self.assertEqual(
-            response.data["data"]["total_price"],
-            300,
-            "Неверная общая стоимость после повторного добавления",
-        )
-
-    def test_add_to_cart_creates_cart_item(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": self.garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Ошибка при добавлении товара в корзину",
-        )
-
-        cart = catalog.models.Cart.objects.filter(user=self.user).first()
-        self.assertIsNotNone(
-            cart,
-            "Корзина не была создана для пользователя",
-        )
-
-        cart_item = catalog.models.CartItem.objects.filter(
-            cart=cart,
-            product=self.product,
-            garment=self.garment,
-        ).first()
-        self.assertIsNotNone(
-            cart_item,
-            "Товар не был добавлен в корзину",
-        )
-        self.assertEqual(
-            cart_item.quantity,
-            1,
-            "Неверное количество товара в корзине",
-        )
-
-    def test_add_to_cart_reuses_existing_cart(self):
-        cart = catalog.models.Cart.objects.create(user=self.user)
-
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": self.garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Ошибка при добавлении товара в корзину",
-        )
-
-        carts_count = catalog.models.Cart.objects.filter(
-            user=self.user
-        ).count()
-        self.assertEqual(
-            carts_count,
-            1,
-            "Была создана новая корзина вместо использования существующей",
-        )
-
-        cart_item = catalog.models.CartItem.objects.filter(
-            cart=cart,
-            product=self.product,
-            garment=self.garment,
-        ).first()
-        self.assertIsNotNone(
-            cart_item,
-            "Товар не был добавлен в существующую корзину",
-        )
-
-    def test_add_to_cart_updates_existing_item(self):
-        cart = catalog.models.Cart.objects.create(user=self.user)
-        cart_item = catalog.models.CartItem.objects.create(
-            cart=cart,
-            product=self.product,
-            garment=self.garment,
-            quantity=1,
-        )
-
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:cart-add"),
-            {
-                "id_product": self.product.id,
-                "id_garment": self.garment.id,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.CREATED,
-            "Ошибка при добавлении товара в корзину",
-        )
-
-        cart_item.refresh_from_db()
-        self.assertEqual(
-            cart_item.quantity,
-            2,
-            "Количество товара не было увеличено",
-        )
-
-        cart_items_count = catalog.models.CartItem.objects.filter(
-            cart=cart,
-            product=self.product,
-            garment=self.garment,
-        ).count()
-        self.assertEqual(
-            cart_items_count,
-            1,
-            "Был создан новый CartItem вместо обновления существующего",
-        )
-
-
-@django.test.override_settings(MEDIA_ROOT=MEDIA_ROOT)
-class CreateOrderViewTest(django.test.TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.user = users.models.User.objects.create_user(
-            username="testuser",
-            password="testpass",
-        )
-        cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория",
-        )
-        cls.color = catalog.models.Color.objects.create(
-            name="Зеленый",
-            color="#008000",
-        )
-        cls.product = catalog.models.Product.objects.create(
-            name="Test Product",
-            price=100,
-            category=cls.category,
-        )
-        cls.garment = catalog.models.Garment.objects.create(
-            category=cls.category,
-            color=cls.color,
-            size=catalog.models.Size.M,
-            price=50,
-            count=10,
-        )
-        cls.product.garments.add(cls.garment)
-
-    def setUp(self):
-        self.guest_client = rest_framework.test.APIClient()
-        self.authorized_client = rest_framework.test.APIClient()
-        self.authorized_client.force_authenticate(user=self.user)
-
-        self.cart = catalog.models.Cart.objects.create(user=self.user)
-        self.cart_item = catalog.models.CartItem.objects.create(
-            cart=self.cart,
-            product=self.product,
-            garment=self.garment,
-            quantity=2,
-        )
-
-    @unittest.mock.patch("catalog.tasks.create_order_task.delay")
-    def test_create_order_success(self, mock_task):
-        mock_task.return_value.id = "test_task_id"
-
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:create-order"),
-            {
-                "address": "Test Address",
-                "phone": "+79991234567",
-            },
-        )
-
-        self.assertEqual(
-            response.status_code,
-            201,
-            "Неверный код ответа при создании заказа",
-        )
-        self.assertEqual(
-            response.data["data"]["task_id"],
-            "test_task_id",
-            "Неверный task_id в ответе",
-        )
-
-        mock_task.assert_called_once()
-        call_args = mock_task.call_args[1]
-        self.assertEqual(call_args["user_id"], self.user.id)
-        self.assertEqual(call_args["data"]["address"], "Test Address")
-        self.assertEqual(call_args["data"]["phone"], "+79991234567")
-
-    def test_unauthorized_create_order(self):
-        response = self.guest_client.post(
-            django.urls.reverse("api:catalog:create-order"),
-            {
-                "address": "Test Address",
-                "phone": "+79991234567",
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            403,
-            "Неавторизованный пользователь может создать заказ",
-        )
-
-
-class CartViewTest(django.test.TestCase):
+class GarmentListViewTests(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = users.models.User.objects.create_user(
             username="testuser", password="testpass"
         )
         cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория"
+            name="Test Category"
         )
         cls.color = catalog.models.Color.objects.create(
-            name="Зеленый", color="#008000"
+            name="Test Color", color="#000000"
         )
-        cls.product = catalog.models.Product.objects.create(
-            name="Тестовый продукт", price=100, category=cls.category
-        )
-        cls.garment = catalog.models.Garment.objects.create(
-            category=cls.category,
-            color=cls.color,
-            size=catalog.models.Size.M,
-            price=50,
-            count=10,
-        )
-        cls.product.garments.add(cls.garment)
+        cls.guest_client = rest_framework.test.APIClient()
 
-    def setUp(self):
-        self.guest_client = rest_framework.test.APIClient()
-        self.authorized_client = rest_framework.test.APIClient()
-        self.authorized_client.force_authenticate(user=self.user)
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
 
-        self.cart = catalog.models.Cart.objects.create(user=self.user)
-        self.cart_item = catalog.models.CartItem.objects.create(
-            cart=self.cart,
-            product=self.product,
-            garment=self.garment,
-            quantity=2,
-        )
-
-    def test_unauthorized_get_cart(self):
+    def test_garment_list_view(self):
         response = self.guest_client.get(
-            django.urls.reverse("api:catalog:cart")
+            django.urls.reverse("api:catalog:garments")
         )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+
+    def test_garment_list_view_content(self):
+        response = self.guest_client.get(
+            django.urls.reverse("api:catalog:garments")
+        )
+        response_data = response.json()
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
         self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.FORBIDDEN,
-            "Неавторизованный пользователь может получить корзину",
+            response_data,
+            {"data": [], "message": "Одежда успешно получена"},
         )
 
-    def test_get_cart_success(self):
-        response = self.authorized_client.get(
-            django.urls.reverse("api:catalog:cart")
+    def test_garment_list_view_content_2(self):
+        garment = catalog.models.Garment.objects.create(
+            category=self.category,
+            color=self.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
         )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.OK,
-            "Неверный код ответа при получении корзины",
+        response = self.guest_client.get(
+            django.urls.reverse("api:catalog:garments")
         )
-        self.assertEqual(
-            response.data["message"],
-            "Корзина успешно получена",
-            "Неверное сообщение об успешном получении",
-        )
-
-        cart_data = response.data["data"][0]
-        expected_fields = {
-            "id",
-            "name",
-            "category",
-            "color",
-            "size",
-            "quantity",
-            "available_quantity",
-            "total_price",
-            "image",
-        }
-        self.assertEqual(
-            set(cart_data.keys()),
-            expected_fields,
-            "Неверный набор полей в ответе",
-        )
-        self.assertEqual(
-            cart_data["name"], self.product.name, "Неверное имя продукта"
-        )
-        self.assertEqual(
-            cart_data["category"], self.category.name, "Неверная категория"
-        )
-        self.assertEqual(cart_data["color"], self.color.color, "Неверный цвет")
-        self.assertEqual(
-            cart_data["size"], self.garment.size, "Неверный размер"
-        )
-        self.assertEqual(
-            cart_data["quantity"],
-            self.cart_item.quantity,
-            "Неверное количество",
-        )
-        self.assertEqual(
-            cart_data["available_quantity"],
-            self.garment.count,
-            "Неверное доступное количество",
-        )
-        self.assertEqual(
-            cart_data["total_price"],
-            (self.product.price + self.garment.price)
-            * self.cart_item.quantity,
-            "Неверная общая стоимость",
-        )
-
-    def test_get_empty_cart(self):
-        self.cart_item.delete()
-        response = self.authorized_client.get(
-            django.urls.reverse("api:catalog:cart")
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.OK,
-            "Неверный код ответа при пустой корзине",
-        )
-        self.assertEqual(
-            len(response.data["data"]),
-            0,
-            "Пустая корзина должна возвращать пустой список",
-        )
-
-    def test_cart_not_found(self):
-        self.cart.delete()
-        response = self.authorized_client.get(
-            django.urls.reverse("api:catalog:cart")
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Отсутствующая корзина должна возвращать 400",
-        )
-
-    def test_update_cart_item_quantity_validation(self):
-        test_cases = [
-            ("", "Некорректное количество"),
-            ("0", "Некорректное количество"),
-            ("-1", "Некорректное количество"),
-            ("abc", "Некорректное количество"),
-        ]
-
-        for quantity, expected_error in test_cases:
-            with self.subTest(quantity=quantity):
-                response = self.authorized_client.patch(
-                    django.urls.reverse("api:catalog:update-cart-item"),
-                    {
-                        "item_id": self.cart_item.id,
-                        "quantity": quantity,
-                    },
-                )
-                self.assertEqual(
-                    response.status_code,
-                    http.HTTPStatus.BAD_REQUEST,
-                    "Неверный код ответа при невалидном количестве",
-                )
-                self.assertEqual(
-                    response.data["errors"]["fields"]["quantity"],
-                    expected_error,
-                    "Неверное сообщение об ошибке",
-                )
-
-    def test_update_nonexistent_cart_item(self):
-        response = self.authorized_client.patch(
-            django.urls.reverse("api:catalog:update-cart-item"),
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        data = response.json()
+        data_expected = [
             {
-                "item_id": 99999,
-                "quantity": 2,
-            },
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при обновлении несуществующего товара",
-        )
-        self.assertEqual(
-            response.data["errors"]["form_error"],
-            "Товар не найден в корзине",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_delete_nonexistent_cart_item(self):
-        response = self.authorized_client.delete(
-            django.urls.reverse("api:catalog:update-cart-item"),
-            {"item_id": 99999},
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при удалении несуществующего товара",
-        )
-        self.assertEqual(
-            response.data["errors"]["form_error"],
-            "Товар не найден в корзине",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_delete_cart_item_validation(self):
-        response = self.authorized_client.delete(
-            django.urls.reverse("api:catalog:update-cart-item"),
-            {},
-            content_type="application/json",
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при отсутствии item_id",
-        )
-        self.assertEqual(
-            response.data["errors"]["fields"]["item_id"],
-            "Обязательное поле.",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_delete_nonexistent_cart_item_bulk(self):
-        response = self.authorized_client.delete(
-            django.urls.reverse("api:catalog:update-cart-item"),
-            {"item_id": 99999},
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при удалении несуществующего товара",
-        )
-
-        self.assertEqual(
-            response.data["errors"]["form_error"],
-            "Товар не найден в корзине",
-            "Неверное сообщение об ошибке",
-        )
-
-    def test_get_cart_without_cart(self):
-        self.cart.delete()
-        response = self.authorized_client.get(
-            django.urls.reverse("api:catalog:cart")
-        )
-        self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при отсутствии корзины",
-        )
-        self.assertEqual(
-            response.data["errors"]["form_error"],
-            "Корзина не найдена",
-            "Неверное сообщение об ошибке",
-        )
-
-    @parameterized.parameterized.expand(
-        [
-            (2, True, "Количество успешно обновлено"),
-            (10, True, "Максимальное доступное количество"),
-            (11, False, "Превышение доступного количества"),
+                "id": garment.id,
+                "category": {
+                    "name": self.category.name,
+                    "id": self.category.id,
+                },
+                "color": {
+                    "name": self.color.name,
+                    "hex": self.color.color,
+                    "id": self.color.id,
+                },
+                "size": "M",
+                "count": 10,
+                "price": 100,
+            }
         ]
-    )
-    def test_update_cart_item_quantity(
-        self, new_quantity, should_succeed, test_name
-    ):
-        initial_quantity = self.cart_item.quantity
-        response = self.authorized_client.patch(
-            django.urls.reverse("api:catalog:update-cart-item"),
-            {
-                "item_id": self.cart_item.id,
-                "quantity": new_quantity,
-            },
+        self.assertEqual(
+            data,
+            {"data": data_expected, "message": "Одежда успешно получена"},
         )
 
-        if should_succeed:
-            self.assertEqual(
-                response.status_code,
-                http.HTTPStatus.OK,
-                f"Неверный код ответа при {test_name}",
-            )
-            self.cart_item.refresh_from_db()
-            self.assertEqual(
-                self.cart_item.quantity,
-                new_quantity,
-                f"Количество товара не обновилось при {test_name}",
-            )
-            self.assertEqual(
-                response.data["data"]["quantity"],
-                new_quantity,
-                f"Неверное количество в ответе при {test_name}",
-            )
-            self.assertEqual(
-                response.data["data"]["total_price"],
-                (self.product.price + self.garment.price) * new_quantity,
-                f"Неверная общая стоимость в ответе при {test_name}",
-            )
-        else:
-            self.assertEqual(
-                response.status_code,
-                http.HTTPStatus.BAD_REQUEST,
-                f"Неверный код ответа при {test_name}",
-            )
-            self.cart_item.refresh_from_db()
-            self.assertEqual(
-                self.cart_item.quantity,
-                initial_quantity,
-                f"Количество товара изменилось при {test_name}",
-            )
-            self.assertEqual(
-                response.data["errors"]["form_error"],
-                "Недостаточно товара на складе",
-                f"Неверное сообщение об ошибке при {test_name}",
-            )
 
-
-class OrderHistoryViewTest(django.test.TestCase):
+@django.test.override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class ProductListViewTests(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = users.models.User.objects.create_user(
-            username="testuser",
-            password="testpass",
+            username="testuser", password="testpass"
         )
         cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория",
+            name="Test Category"
         )
         cls.color = catalog.models.Color.objects.create(
-            name="Зеленый",
-            color="#008000",
+            name="Test Color", color="#000000"
         )
-        cls.product = catalog.models.Product.objects.create(
-            name="Тестовый продукт",
-            price=100,
-            category=cls.category,
+        cls.image = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test_image.jpg",
+            content=create_test_image().read(),
+            content_type="image/jpeg",
+        )
+        cls.guest_client = rest_framework.test.APIClient()
+        cls.authorized_client = rest_framework.test.APIClient()
+        cls.authorized_client.force_authenticate(user=cls.user)
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def test_product_list_view(self):
+        response = self.guest_client.get(
+            django.urls.reverse("api:catalog:products")
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.assertIn("data", response.json())
+        self.assertIn("message", response.json())
+        self.assertEqual(
+            response.json()["message"],
+            "Продукты успешно получены",
+        )
+        self.assertIn("results", response.json()["data"])
+        self.assertEqual(
+            response.json()["data"]["results"],
+            [],
+        )
+
+    def test_product_list_view_2(self):
+        product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:products")
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.assertIn("count", response.json()["data"])
+        self.assertEqual(
+            response.json()["data"]["count"],
+            1,
+        )
+        results_expected = [
+            {
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "image": None,
+            }
+        ]
+        self.assertEqual(
+            response.json()["data"]["results"],
+            results_expected,
+        )
+
+    def test_product_list_view_3(self):
+        product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        product_image = catalog.models.ProductImage.objects.create(
+            product=product, image=self.image
+        )
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:products")
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.assertIn("count", response.json()["data"])
+        self.assertEqual(
+            response.json()["data"]["count"],
+            1,
+        )
+        product_image.refresh_from_db()
+        results_expected = [
+            {
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "image": product_image.get_image_660x880().url,
+            }
+        ]
+        self.assertEqual(
+            response.json()["data"]["results"],
+            results_expected,
+        )
+
+
+@django.test.override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class ProductDetailViewTests(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Test Category"
+        )
+        cls.guest_client = rest_framework.test.APIClient()
+        cls.authorized_client = rest_framework.test.APIClient()
+        cls.authorized_client.force_authenticate(user=cls.user)
+        cls.image = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test_image.jpg",
+            content=create_test_image().read(),
+            content_type="image/jpeg",
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Test Color", color="#000000"
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
-            price=50,
             count=10,
+            price=100,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def test_product_detail_view(self):
+        response = self.guest_client.get(
+            django.urls.reverse("api:catalog:product-detail", args=[1])
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.NOT_FOUND)
+
+    def test_product_detail_view_2(self):
+        product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        response = self.authorized_client.get(
+            django.urls.reverse(
+                "api:catalog:product-detail", args=[product.id]
+            )
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        response_expected = {
+            "data": {
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "image": None,
+                "additional_images": [],
+                "garments": [],
+            },
+            "message": "Продукт успешно получен",
+        }
+        self.assertEqual(response.json(), response_expected)
+
+    def test_product_detail_view_3(self):
+        product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        product.garments.add(self.garment)
+        product_image = catalog.models.ProductImage.objects.create(
+            product=product, image=self.image
+        )
+        product_additional_image = (
+            catalog.models.ProductAdditionalImage.objects.create(
+                product=product,
+                image=self.image,
+                color=self.color,
+                category=self.category,
+            )
+        )
+        product.refresh_from_db()
+        response = self.authorized_client.get(
+            django.urls.reverse(
+                "api:catalog:product-detail", args=[product.id]
+            )
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        response_expected = {
+            "data": {
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "image": product_image.image.url,
+                "additional_images": [
+                    {
+                        "image": product_additional_image.image.url,
+                        "color": {
+                            "id": self.color.id,
+                            "name": self.color.name,
+                        },
+                        "category": {
+                            "id": self.category.id,
+                            "name": self.category.name,
+                        },
+                    }
+                ],
+                "garments": [
+                    {
+                        "id": self.garment.id,
+                        "size": self.garment.size.value,
+                        "count": self.garment.count,
+                        "price": self.garment.price,
+                        "category": {
+                            "id": self.category.id,
+                            "name": self.category.name,
+                        },
+                        "color": {
+                            "id": self.color.id,
+                            "name": self.color.name,
+                            "hex": self.color.color,
+                        },
+                    }
+                ],
+            },
+            "message": "Продукт успешно получен",
+        }
+        self.assertEqual(response.json(), response_expected)
+
+
+class AddToCartViewTests(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Test Category"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Test Color", color="#000000"
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
         )
         cls.product.garments.add(cls.garment)
+        cls.authorized_client = rest_framework.test.APIClient()
+        cls.authorized_client.force_authenticate(user=cls.user)
 
-    def setUp(self):
-        self.guest_client = rest_framework.test.APIClient()
-        self.authorized_client = rest_framework.test.APIClient()
-        self.authorized_client.force_authenticate(user=self.user)
-
-        self.order = catalog.models.Order.objects.create(
-            user=self.user,
-            status=catalog.models.OrderStatus.WAITING_PAYMENT,
-            address="Test Address",
-            phone="+79991234567",
+    def test_add_to_cart_view(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={
+                "id_product": self.product.id,
+                "id_garment": self.garment.id,
+            },
         )
-        self.order_item = catalog.models.OrderItem.objects.create(
-            order=self.order,
-            product=self.product,
-            garment=self.garment,
-            quantity=2,
-            price=self.product.price + self.garment.price,
+        self.assertEqual(response.status_code, http.HTTPStatus.CREATED)
+
+    def test_no_valid_data(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={},
+        )
+        fields_expected = {
+            "id_product": "Обязательное поле.",
+            "id_garment": "Обязательное поле.",
+        }
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+        self.assertEqual(
+            response.json()["errors"]["fields"],
+            fields_expected,
         )
 
-    def test_unauthorized_get_orders(self):
-        response = self.guest_client.get(
-            django.urls.reverse("api:catalog:order-history")
+    def test_garment_not_found(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={"id_product": self.product.id, "id_garment": 999},
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+
+    def test_product_not_found(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={"id_product": 999, "id_garment": self.garment.id},
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+
+    def test_no_cart(self):
+        cart = catalog.models.Cart.objects.filter(user=self.user).first()
+        self.assertIsNone(cart)
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={
+                "id_product": self.product.id,
+                "id_garment": self.garment.id,
+            },
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.CREATED)
+        new_cart = catalog.models.Cart.objects.filter(user=self.user).first()
+        self.assertIsNotNone(new_cart)
+        self.assertEqual(new_cart.items.count(), 1)
+        self.assertEqual(new_cart.items.first().product, self.product)
+        self.assertEqual(new_cart.items.first().garment, self.garment)
+
+    def test_add_to_cart_view_2(self):
+        self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={
+                "id_product": self.product.id,
+                "id_garment": self.garment.id,
+            },
+        )
+        self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={
+                "id_product": self.product.id,
+                "id_garment": self.garment.id,
+            },
+        )
+        cart = catalog.models.Cart.objects.filter(user=self.user).first()
+        self.assertEqual(cart.items.count(), 1)
+        self.assertEqual(cart.items.first().quantity, 2)
+
+
+@django.test.override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class CartViewTests(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user_without_cart = users.models.User.objects.create_user(
+            username="testuser_without_cart",
+            password="testpass",
+            email="testuser_without_cart@test.com",
+        )
+        cls.user_with_cart = users.models.User.objects.create_user(
+            username="testuser_with_cart",
+            password="testpass",
+            email="testuser_with_cart@test.com",
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Test Category"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Test Color", color="#000000"
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
+        )
+        cls.image = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test_image.jpg",
+            content=create_test_image().read(),
+            content_type="image/jpeg",
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        cls.product_image = catalog.models.ProductImage.objects.create(
+            product=cls.product, image=cls.image
+        )
+        cls.product.garments.add(cls.garment)
+        cls.authorized_client_without_cart = rest_framework.test.APIClient()
+        cls.authorized_client_without_cart.force_authenticate(
+            user=cls.user_without_cart
+        )
+        cls.cart = catalog.models.Cart.objects.create(user=cls.user_with_cart)
+        cls.cart_item = catalog.models.CartItem.objects.create(
+            cart=cls.cart, product=cls.product, garment=cls.garment
+        )
+        cls.cart.items.add(cls.cart_item)
+        cls.authorized_client_with_cart = rest_framework.test.APIClient()
+        cls.authorized_client_with_cart.force_authenticate(
+            user=cls.user_with_cart
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def test_cart_view(self):
+        response = self.authorized_client_without_cart.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.assertEqual(
+            response.json()["data"]["items"],
+            [],
+        )
+        self.assertIsNotNone(
+            catalog.models.Cart.objects.filter(
+                user=self.user_without_cart
+            ).first()
+        )
+
+    def test_cart_view_2(self):
+        response = self.authorized_client_with_cart.get(
+            django.urls.reverse("api:catalog:cart")
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        expected_garment = {
+            "id": self.garment.id,
+            "size": self.garment.size.value,
+            "count": self.garment.count,
+            "price": self.garment.price,
+            "category": {
+                "id": self.category.id,
+                "name": self.category.name,
+            },
+            "color": {
+                "id": self.color.id,
+                "name": self.color.name,
+                "hex": self.color.color,
+            },
+        }
+        expected_product = {
+            "id": self.product.id,
+            "name": self.product.name,
+            "price": self.product.price,
+            "image": self.product_image.get_image_660x880().url,
+        }
+        self.assertEqual(
+            response.json()["data"]["items"][0]["product"],
+            expected_product,
         )
         self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.FORBIDDEN,
-            "Неавторизованный пользователь может получить заказы",
+            response.json()["data"]["items"][0]["garment"],
+            expected_garment,
         )
 
-    def test_get_orders_success(self):
+
+class UpdateCartItemViewTests(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Test Category"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Test Color", color="#000000"
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        cls.product.garments.add(cls.garment)
+        cls.cart = catalog.models.Cart.objects.create(user=cls.user)
+        cls.cart_item = catalog.models.CartItem.objects.create(
+            cart=cls.cart, product=cls.product, garment=cls.garment
+        )
+        cls.cart.items.add(cls.cart_item)
+        cls.authorized_client = rest_framework.test.APIClient()
+        cls.authorized_client.force_authenticate(user=cls.user)
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def test_update_cart_item_view(self):
+        response = self.authorized_client.patch(
+            django.urls.reverse(
+                "api:catalog:update-cart-item", args=[self.cart_item.id + 1]
+            ),
+            data={"quantity": 2},
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.NOT_FOUND)
+        self.assertEqual(
+            response.json()["message"],
+            "Товар не найден в корзине",
+        )
+
+    def test_no_valid_data(self):
+        response = self.authorized_client.patch(
+            django.urls.reverse(
+                "api:catalog:update-cart-item", args=[self.cart_item.id]
+            ),
+            data={"quantity": 0},
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+        self.assertEqual(
+            response.json()["errors"]["fields"]["quantity"],
+            "Некорректное количество",
+        )
+
+    def test_not_enough_garment(self):
+        response = self.authorized_client.patch(
+            django.urls.reverse(
+                "api:catalog:update-cart-item", args=[self.cart_item.id]
+            ),
+            data={"quantity": 11},
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+        self.assertEqual(
+            response.json()["errors"]["form_error"],
+            "Недостаточно товара на складе",
+        )
+
+    def test_update_cart_item_view_2(self):
+        before_quantity = self.cart_item.quantity
+        response = self.authorized_client.patch(
+            django.urls.reverse(
+                "api:catalog:update-cart-item", args=[self.cart_item.id]
+            ),
+            data={"quantity": 2},
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.cart_item.refresh_from_db()
+        self.assertEqual(self.cart_item.quantity, before_quantity + 1)
+
+    def test_delete_cart_item_view(self):
+        response = self.authorized_client.delete(
+            django.urls.reverse(
+                "api:catalog:update-cart-item", args=[self.cart_item.id]
+            )
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.assertFalse(
+            catalog.models.CartItem.objects.filter(
+                id=self.cart_item.id
+            ).exists()
+        )
+
+
+@django.test.override_settings(
+    CELERY_BROKER_URL=TEST_CELERY_BROKER_URL,
+    CELERY_RESULT_BACKEND=TEST_CELERY_RESULT_BACKEND,
+    CELERY_ONCE=TEST_CELERY_ONCE,
+)
+class OrderHistoryViewTests(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Test Category"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Test Color", color="#000000"
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        cls.product.garments.add(cls.garment)
+        cls.cart = catalog.models.Cart.objects.create(user=cls.user)
+        cls.cart_item = catalog.models.CartItem.objects.create(
+            cart=cls.cart, product=cls.product, garment=cls.garment
+        )
+        cls.cart.items.add(cls.cart_item)
+        cls.authorized_client = rest_framework.test.APIClient()
+        cls.authorized_client.force_authenticate(user=cls.user)
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def tearDown(self):
+        host = TEST_CELERY_BROKER_URL.split("//")[1].split(":")[0]
+        port = TEST_CELERY_BROKER_URL.split(":")[2].split("/")[0]
+        db = TEST_CELERY_BROKER_URL.split("/")[3]
+        redis_client = redis.Redis(host=host, port=port, db=db)
+        redis_client.flushall()
+        super().tearDown()
+
+    def test_order_history_view(self):
         response = self.authorized_client.get(
             django.urls.reverse("api:catalog:order-history")
         )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
         self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.OK,
-            "Неверный код ответа при получении заказов",
+            response.json()["data"]["results"],
+            [],
         )
 
-        data = response.data["data"]
-        self.assertEqual(
-            data["count"],
-            1,
-            "Неверное количество заказов",
+    def test_order_history_post(self):
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:order-history")
         )
-        order_data = data["results"][0]
+        self.assertEqual(response.status_code, http.HTTPStatus.CREATED)
         self.assertEqual(
-            order_data["status"],
-            self.order.status,
-            "Неверный статус заказа",
-        )
-        self.assertEqual(
-            order_data["address"],
-            self.order.address,
-            "Неверный адрес заказа",
+            response.json()["message"],
+            "Задача создания заказа запущена",
         )
 
-        item_data = order_data["items"][0]
-        self.assertEqual(
-            item_data["name"],
-            self.product.name,
-            "Неверное имя продукта",
+    def test_order_history_view_2(self):
+        order = catalog.models.Order.objects.create(
+            user=self.user,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
         )
-        self.assertEqual(
-            item_data["category"],
-            self.category.name,
-            "Неверная категория",
+        order_item = catalog.models.OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            garment=self.garment,
+            quantity=1,
+            price=self.product.price + self.garment.price,
         )
-        self.assertEqual(
-            item_data["color"],
-            self.color.color,
-            "Неверный цвет",
+        order.items.add(order_item)
+        response = self.authorized_client.get(
+            django.urls.reverse("api:catalog:order-history")
         )
-        self.assertEqual(
-            item_data["size"],
-            self.garment.size,
-            "Неверный размер",
-        )
-        self.assertEqual(
-            item_data["quantity"],
-            self.order_item.quantity,
-            "Неверное количество",
-        )
-        self.assertEqual(
-            item_data["price"],
-            self.order_item.price,
-            "Неверная цена",
-        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        expected_data = {
+            "id": order.id,
+            "status": {
+                "status": order.status.value,
+                "status_display": order.status._label_,
+            },
+            "total_sum": order.total_sum,
+            "address": order.address,
+        }
+        for key, value in expected_data.items():
+            self.assertEqual(response.json()["data"]["results"][0][key], value)
 
-    @parameterized.parameterized.expand(
-        [
-            (
-                catalog.models.OrderStatus.WAITING_PAYMENT,
-                True,
-                "Отмена заказа в ожидании оплаты",
-            ),
-            (
-                catalog.models.OrderStatus.PAID,
-                False,
-                "Попытка отменить оплаченный заказ",
-            ),
-            (
-                catalog.models.OrderStatus.IN_DELIVERY,
-                False,
-                "Попытка отменить заказ в доставке",
-            ),
-            (
-                catalog.models.OrderStatus.DELIVERED,
-                False,
-                "Попытка отменить доставленный заказ",
-            ),
-            (
-                catalog.models.OrderStatus.CANCELED,
-                False,
-                "Попытка отменить отмененный заказ",
-            ),
+        expected_items = [
+            {
+                "id": order_item.id,
+                "product": {
+                    "id": self.product.id,
+                    "name": self.product.name,
+                    "price": self.product.price,
+                    "image": None,
+                },
+                "garment": {
+                    "id": self.garment.id,
+                    "size": self.garment.size.value,
+                    "count": self.garment.count,
+                    "price": self.garment.price,
+                    "category": {
+                        "id": self.category.id,
+                        "name": self.category.name,
+                    },
+                    "color": {
+                        "id": self.color.id,
+                        "name": self.color.name,
+                        "hex": self.color.color,
+                    },
+                },
+                "quantity": order_item.quantity,
+                "price": order_item.price,
+                "total_price": order_item.total_price,
+            }
         ]
-    )
-    def test_cancel_order(self, status, should_succeed, test_name):
-        self.order.status = status
+        self.assertEqual(
+            response.json()["data"]["results"][0]["items"],
+            expected_items,
+        )
+
+
+class OrderDetailViewTests(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Test Category"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Test Color", color="#000000"
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="Test Product", price=100
+        )
+        cls.product.garments.add(cls.garment)
+        cls.yookassa_service = payments.services.YooKassaService()
+        cls.order = catalog.models.Order.objects.create(
+            user=cls.user,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+            payment_status=catalog.models.PaymentStatus.SUCCEEDED,
+            address="Test Address",
+            phone="+79991234567",
+        )
+        cls.order_item = catalog.models.OrderItem.objects.create(
+            order=cls.order,
+            product=cls.product,
+            garment=cls.garment,
+            quantity=1,
+            price=cls.product.price + cls.garment.price,
+        )
+        cls.order.total_sum = cls.order_item.total_price
+        cls.order.save()
+        cls.payment_data = cls.yookassa_service.create_payment(
+            order=cls.order,
+            return_url=None,
+        )
+        cls.order.payment_id = cls.payment_data["id"]
+        cls.order.confirmation_url = cls.payment_data["confirmation_url"]
+        cls.order.save()
+
+        cls.order.items.add(cls.order_item)
+        cls.authorized_client = rest_framework.test.APIClient()
+        cls.authorized_client.force_authenticate(user=cls.user)
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def test_order_detail_view(self):
+        response = self.authorized_client.get(
+            django.urls.reverse(
+                "api:catalog:order-detail", args=[self.order.id]
+            )
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.order.refresh_from_db()
+        self.assertEqual(
+            self.order.status, catalog.models.OrderStatus.WAITING_PAYMENT
+        )
+        self.assertEqual(
+            self.order.payment_status, catalog.models.PaymentStatus.PENDING
+        )
+        self.assertEqual(
+            self.order.confirmation_url, self.payment_data["confirmation_url"]
+        )
+        expected_items = [
+            {
+                "id": self.order_item.id,
+                "product": {
+                    "id": self.product.id,
+                    "name": self.product.name,
+                    "price": self.product.price,
+                    "image": None,
+                },
+                "garment": {
+                    "id": self.garment.id,
+                    "size": self.garment.size.value,
+                    "count": self.garment.count,
+                    "price": self.garment.price,
+                    "category": {
+                        "id": self.category.id,
+                        "name": self.category.name,
+                    },
+                    "color": {
+                        "id": self.color.id,
+                        "name": self.color.name,
+                        "hex": self.color.color,
+                    },
+                },
+                "quantity": self.order_item.quantity,
+                "price": self.order_item.price,
+                "total_price": self.order_item.total_price,
+            }
+        ]
+        self.assertEqual(
+            response.json()["data"]["items"],
+            expected_items,
+        )
+
+    def test_delete_no_valid_order(self):
+        response = self.authorized_client.delete(
+            django.urls.reverse(
+                "api:catalog:order-detail", args=[self.order.id + 1]
+            )
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.NOT_FOUND)
+
+    def test_delete_order_with_status_not_waiting_payment(self):
+        self.order.status = catalog.models.OrderStatus.PAID
         self.order.save()
-
-        initial_garment_count = self.garment.count
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:order-history"),
-            {"order_id": self.order.id},
+        response = self.authorized_client.delete(
+            django.urls.reverse(
+                "api:catalog:order-detail", args=[self.order.id]
+            )
         )
-
-        if should_succeed:
-            self.assertEqual(
-                response.status_code,
-                http.HTTPStatus.OK,
-                f"Неверный код ответа при {test_name}",
-            )
-            self.assertEqual(
-                response.data["message"],
-                "Заказ успешно отменен",
-                f"Неверное сообщение при {test_name}",
-            )
-            self.order.refresh_from_db()
-            self.assertEqual(
-                self.order.status,
-                catalog.models.OrderStatus.CANCELED,
-                f"Статус заказа не изменился при {test_name}",
-            )
-            self.garment.refresh_from_db()
-            self.assertEqual(
-                self.garment.count,
-                initial_garment_count + self.order_item.quantity,
-                f"Количество товара не увеличилось при {test_name}",
-            )
-        else:
-            self.assertEqual(
-                response.status_code,
-                http.HTTPStatus.BAD_REQUEST,
-                f"Неверный код ответа при {test_name}",
-            )
-            self.assertEqual(
-                response.data["errors"]["form_error"],
-                "Заказ не найден или не может быть отменен",
-                f"Неверное сообщение об ошибке при {test_name}",
-            )
-            self.garment.refresh_from_db()
-            self.assertEqual(
-                self.garment.count,
-                initial_garment_count,
-                f"Количество товара изменилось при {test_name}",
-            )
-
-    def test_cancel_nonexistent_order(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:order-history"),
-            {"order_id": 99999},
-        )
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
         self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при отмене несуществующего заказа",
-        )
-        self.assertEqual(
-            response.data["errors"]["form_error"],
-            "Заказ не найден или не может быть отменен",
-            "Неверное сообщение об ошибке",
+            response.json()["message"],
+            "Заказ может быть отменен только в статусе ожидания оплаты",
         )
 
-    def test_cancel_order_validation(self):
-        response = self.authorized_client.post(
-            django.urls.reverse("api:catalog:order-history"),
-            {},
+    def test_delete_valid_order(self):
+        response = self.authorized_client.delete(
+            django.urls.reverse(
+                "api:catalog:order-detail", args=[self.order.id]
+            )
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.OK)
+        self.garment.refresh_from_db()
+        self.assertEqual(self.garment.count, 11)
+        self.order.refresh_from_db()
+        self.assertEqual(
+            self.order.status, catalog.models.OrderStatus.CANCELED
         )
         self.assertEqual(
-            response.status_code,
-            http.HTTPStatus.BAD_REQUEST,
-            "Неверный код ответа при отсутствии order_id",
-        )
-        self.assertEqual(
-            response.data["errors"]["fields"]["order_id"],
-            "Обязательное поле.",
-            "Неверное сообщение об ошибке",
+            self.order.payment_status, catalog.models.PaymentStatus.CANCELED
         )

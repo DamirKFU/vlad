@@ -30,6 +30,6 @@ def validate_russian_phone(value: str):
         r"?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$"
     )
     if not pattern.match(value):
-        raise serializers.ValidationError(
+        raise django.core.exceptions.ValidationError(
             "Неверный формат номера телефона (РФ)."
         )

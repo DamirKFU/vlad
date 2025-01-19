@@ -9,6 +9,40 @@ import payments.services
 import staff.logs
 
 
+ADDITIONAL_IMAGES_RELATED_QUERY_NAME = (
+    catalog.models.Product.additional_images.field.related_query_name()
+)
+
+
+class GarmentSerializer(rest_framework.serializers.ModelSerializer):
+    category = rest_framework.serializers.SerializerMethodField()
+    color = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = catalog.models.Garment
+        fields = [
+            catalog.models.Garment.id.field.name,
+            catalog.models.Garment.category.field.name,
+            catalog.models.Garment.color.field.name,
+            catalog.models.Garment.size.field.name,
+            catalog.models.Garment.count.field.name,
+            catalog.models.Garment.price.field.name,
+        ]
+
+    def get_category(self, obj):
+        return {
+            "name": obj.category.name,
+            "id": obj.category.id,
+        }
+
+    def get_color(self, obj):
+        return {
+            "name": obj.color.name,
+            "hex": obj.color.color,
+            "id": obj.color.id,
+        }
+
+
 class ConstructorProductCreateSerializer(
     rest_framework.serializers.Serializer
 ):
@@ -73,29 +107,94 @@ class ProductSerializer(rest_framework.serializers.ModelSerializer):
 
     def get_image(self, obj):
         if hasattr(obj, "image") and obj.image:
-            request = self.context.get("request")
-            return request.build_absolute_uri(
-                obj.image.get_image_660x880().url
-            )
+            return obj.image.get_image_660x880().url
 
         return None
 
 
-class CartSerializer(rest_framework.serializers.Serializer):
-    def validate(self, data):
-        cart = (
-            catalog.models.Cart.objects.get_cart_with_items()
-            .filter(user=self.context["request"].user)
-            .first()
-        )
+class ProductAdditionalImageSerializer(
+    rest_framework.serializers.ModelSerializer
+):
+    image = rest_framework.serializers.SerializerMethodField()
+    category = rest_framework.serializers.SerializerMethodField()
+    color = rest_framework.serializers.SerializerMethodField()
 
-        if not cart:
-            raise rest_framework.serializers.ValidationError(
-                {"form_error": "Корзина не найдена"}
-            )
+    class Meta:
+        model = catalog.models.ProductAdditionalImage
+        fields = [
+            catalog.models.ProductAdditionalImage.image.field.name,
+            catalog.models.ProductAdditionalImage.category.field.name,
+            catalog.models.ProductAdditionalImage.color.field.name,
+        ]
 
-        data["cart"] = cart
-        return data
+    def get_image(self, obj):
+        if hasattr(obj, "image"):
+            return obj.image.url
+
+        return None
+
+    def get_category(self, obj):
+        return {
+            "id": obj.category.id,
+            "name": obj.category.name,
+        }
+
+    def get_color(self, obj):
+        return {
+            "id": obj.color.id,
+            "name": obj.color.name,
+        }
+
+
+class ProductDetailSerializer(rest_framework.serializers.ModelSerializer):
+    image = rest_framework.serializers.SerializerMethodField()
+    additional_images = ProductAdditionalImageSerializer(
+        many=True, read_only=True
+    )
+    garments = GarmentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = catalog.models.Product
+        fields = [
+            catalog.models.Product.id.field.name,
+            catalog.models.Product.name.field.name,
+            catalog.models.Product.price.field.name,
+            catalog.models.Product.image.related.name,
+            ADDITIONAL_IMAGES_RELATED_QUERY_NAME,
+            catalog.models.Product.garments.field.name,
+        ]
+
+    def get_image(self, obj):
+        if hasattr(obj, "image"):
+            return obj.image.image.url
+
+        return None
+
+
+class CartItemSerializer(rest_framework.serializers.ModelSerializer):
+    product = ProductSerializer()
+    garment = GarmentSerializer()
+
+    class Meta:
+        model = catalog.models.CartItem
+        fields = [
+            catalog.models.CartItem.id.field.name,
+            catalog.models.CartItem.quantity.field.name,
+            catalog.models.CartItem.product.field.name,
+            catalog.models.CartItem.garment.field.name,
+            "total_price",
+        ]
+
+
+class CartSerializer(rest_framework.serializers.ModelSerializer):
+    items = CartItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = catalog.models.Cart
+        fields = [
+            catalog.models.Cart.id.field.name,
+            catalog.models.Cart.items.field.related_query_name(),
+        ]
 
 
 class AddToCartSerializer(rest_framework.serializers.Serializer):
@@ -140,98 +239,22 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
             product=product,
             garment=garment,
             cart=cart,
-            defaults={"quantity": 1},
+            defaults={catalog.models.CartItem.quantity.field.name: 1},
         )
 
         if not created:
-            cart_item.quantity += 1
+            cart_item.quantity = (
+                django.db.models.F(catalog.models.CartItem.quantity.field.name)
+                + 1
+            )
             cart_item.save()
+            cart_item.refresh_from_db()
 
         return {
             "quantity": cart_item.quantity,
             "total_price": (product.price + garment.price)
             * cart_item.quantity,
         }
-
-
-class DeleteCartItemSerializer(rest_framework.serializers.Serializer):
-    item_id = rest_framework.serializers.IntegerField()
-
-    def validate(self, data):
-        cart = self.context["request"].user.cart
-        cart_item = cart.items.filter(id=data["item_id"]).first()
-        if not cart_item:
-            raise rest_framework.serializers.ValidationError(
-                {"form_error": "Товар не найден в корзине"}
-            )
-
-        data["cart_item"] = cart_item
-        return data
-
-    def create(self, validated_data):
-        cart_item = validated_data["cart_item"]
-        cart_item.delete()
-        return cart_item
-
-
-class CartItemSerializer(rest_framework.serializers.ModelSerializer):
-    name = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.CartItem.product.field.name}."
-            f"{catalog.models.Product.name.field.name}"
-        )
-    )
-    category = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.CartItem.garment.field.name}."
-            f"{catalog.models.Garment.category.field.name}."
-            f"{catalog.models.Category.name.field.name}"
-        )
-    )
-    color = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.CartItem.garment.field.name}."
-            f"{catalog.models.Garment.color.field.name}."
-            f"{catalog.models.Color.color.field.name}"
-        )
-    )
-    size = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.CartItem.garment.field.name}."
-            f"{catalog.models.Garment.size.field.name}"
-        )
-    )
-    available_quantity = rest_framework.serializers.IntegerField(
-        source=(
-            f"{catalog.models.CartItem.garment.field.name}."
-            f"{catalog.models.Garment.count.field.name}"
-        )
-    )
-    image = rest_framework.serializers.SerializerMethodField()
-
-    class Meta:
-        model = catalog.models.CartItem
-        fields = [
-            catalog.models.CartItem.id.field.name,
-            "name",
-            "category",
-            "color",
-            "size",
-            catalog.models.CartItem.quantity.field.name,
-            "available_quantity",
-            "total_price",
-            "image",
-        ]
-
-    def get_image(self, obj):
-        request = self.context.get("request")
-        if obj.matching_image:
-            image = catalog.models.ProductAdditionalImage(
-                image=obj.matching_image
-            )
-            return request.build_absolute_uri(image.get_image_330x440().url)
-
-        return None
 
 
 class CreateOrderSerializer(rest_framework.serializers.Serializer):
@@ -331,79 +354,43 @@ class CreateOrderSerializer(rest_framework.serializers.Serializer):
 
 
 class OrderItemSerializer(rest_framework.serializers.ModelSerializer):
-    name = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.OrderItem.product.field.name}."
-            f"{catalog.models.Product.name.field.name}"
-        )
-    )
-    category = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.OrderItem.garment.field.name}."
-            f"{catalog.models.Garment.category.field.name}."
-            f"{catalog.models.Category.name.field.name}"
-        )
-    )
-    color = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.OrderItem.garment.field.name}."
-            f"{catalog.models.Garment.color.field.name}."
-            f"{catalog.models.Color.color.field.name}"
-        )
-    )
-    size = rest_framework.serializers.CharField(
-        source=(
-            f"{catalog.models.OrderItem.garment.field.name}."
-            f"{catalog.models.Garment.size.field.name}"
-        )
-    )
-    image = rest_framework.serializers.SerializerMethodField()
+    product = ProductSerializer()
+    garment = GarmentSerializer()
 
     class Meta:
         model = catalog.models.OrderItem
         fields = [
-            "name",
-            "category",
-            "color",
-            "size",
+            catalog.models.OrderItem.id.field.name,
+            catalog.models.OrderItem.product.field.name,
+            catalog.models.OrderItem.garment.field.name,
             catalog.models.OrderItem.quantity.field.name,
             catalog.models.OrderItem.price.field.name,
             "total_price",
-            "image",
         ]
-
-    def get_image(self, obj):
-        request = self.context.get("request")
-        if obj.matching_image:
-            image = catalog.models.ProductAdditionalImage(
-                image=obj.matching_image
-            )
-            return request.build_absolute_uri(image.get_image_330x440().url)
-
-        return None
 
 
 class OrderSerializer(rest_framework.serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    status_display = rest_framework.serializers.CharField(
-        source=f"get_{catalog.models.Order.status.field.name}_display"
-    )
+    status = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = catalog.models.Order
         fields = [
             catalog.models.Order.id.field.name,
             catalog.models.Order.status.field.name,
-            "status_display",
             catalog.models.Order.address.field.name,
-            catalog.models.Order.created_at.field.name,
             catalog.models.Order.total_sum.field.name,
-            "items",
+            catalog.models.Order.items.field.related_query_name(),
         ]
+
+    def get_status(self, obj):
+        return {
+            "status": obj.status,
+            "status_display": obj.get_status_display(),
+        }
 
 
 class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
-    item_id = rest_framework.serializers.IntegerField()
     quantity = rest_framework.serializers.IntegerField(
         min_value=1,
         error_messages={
@@ -413,15 +400,7 @@ class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
     )
 
     def validate(self, data):
-        cart_item = catalog.models.CartItem.objects.get_cart_item_for_update(
-            user=self.context["request"].user,
-            item_id=data["item_id"],
-        )
-
-        if not cart_item:
-            raise rest_framework.serializers.ValidationError(
-                {"form_error": "Товар не найден в корзине"}
-            )
+        cart_item = self.context["cart_item"]
 
         if cart_item.garment.count < data["quantity"]:
             raise rest_framework.serializers.ValidationError(
@@ -431,63 +410,42 @@ class UpdateCartItemSerializer(rest_framework.serializers.Serializer):
         data["cart_item"] = cart_item
         return data
 
-    def update(self, instance, validated_data):
-        quantity = validated_data["quantity"]
-        catalog.models.CartItem.objects.filter(id=instance.id).update(
-            quantity=quantity
+    def save(self):
+        quantity = self.validated_data["quantity"]
+        cart_item = self.validated_data["cart_item"]
+        cart_item.quantity = quantity
+        cart_item.save(
+            update_fields=[catalog.models.CartItem.quantity.field.name]
         )
-
-        instance.quantity = quantity
 
         return {
             "quantity": quantity,
-            "total_price": instance.total_price,
+            "total_price": cart_item.total_price,
         }
-
-
-class CancelOrderSerializer(rest_framework.serializers.Serializer):
-    order_id = rest_framework.serializers.IntegerField()
-
-    def validate(self, data):
-        order = catalog.models.Order.objects.filter(
-            user=self.context["request"].user,
-            id=data["order_id"],
-            status=catalog.models.OrderStatus.WAITING_PAYMENT,
-        ).first()
-
-        if not order:
-            raise rest_framework.serializers.ValidationError(
-                {"form_error": "Заказ не найден или не может быть отменен"}
-            )
-
-        data["order"] = order
-        return data
-
-    def create(self, validated_data):
-        order = validated_data["order"]
-        order.cancel_order()
-        return order
 
 
 class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    status_display = rest_framework.serializers.CharField(
-        source=f"get_{catalog.models.Order.status.field.name}_display"
-    )
     confirmation_url = rest_framework.serializers.SerializerMethodField()
+    status = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = catalog.models.Order
         fields = [
             catalog.models.Order.id.field.name,
             catalog.models.Order.status.field.name,
-            "status_display",
             catalog.models.Order.address.field.name,
             catalog.models.Order.phone.field.name,
             catalog.models.Order.total_sum.field.name,
-            "items",
-            "confirmation_url",
+            catalog.models.Order.items.field.related_query_name(),
+            catalog.models.Order.confirmation_url.field.name,
         ]
+
+    def get_status(self, obj):
+        return {
+            "status": obj.status,
+            "status_display": obj.get_status_display(),
+        }
 
     def to_representation(self, instance):
         status = instance.status
@@ -507,19 +465,14 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
                 instance.status,
                 catalog.models.OrderStatus.PAID,
             )
-            has_embroidery = any(
-                item.product.embroidery for item in instance.items.all()
+
+            staff.logs.log_order_status_change(
+                instance,
+                None,
+                catalog.models.OrderStatus.PAID,
+                catalog.models.OrderStatus.IN_WORK,
             )
-            if not has_embroidery:
-                instance.status = catalog.models.OrderStatus.PAID
-            else:
-                staff.logs.log_order_status_change(
-                    instance,
-                    None,
-                    catalog.models.OrderStatus.PAID,
-                    catalog.models.OrderStatus.IN_WORK,
-                )
-                instance.status = catalog.models.OrderStatus.IN_WORK
+            instance.status = catalog.models.OrderStatus.IN_WORK
 
         if status_payment == catalog.models.PaymentStatus.CANCELED:
             staff.logs.log_order_status_change(

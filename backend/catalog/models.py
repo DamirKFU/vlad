@@ -41,6 +41,11 @@ class BaseImage(django.db.models.Model):
         "изображение",
         upload_to=get_path_image,
         help_text="загрузите изображение",
+        validators=[
+            django.core.validators.FileExtensionValidator(
+                ["jpg", "jpeg", "png"]
+            ),
+        ],
     )
 
     def get_image_300x300(self):
@@ -120,10 +125,11 @@ class GarmentManager(django.db.models.Manager):
                 Garment.color.field.name,
             )
         )
-        return queryset.values(
+        return queryset.only(
             Garment.id.field.name,
             Garment.size.field.name,
             Garment.count.field.name,
+            Garment.price.field.name,
             f"{Garment.category.field.name}__{Category.name.field.name}",
             f"{Garment.color.field.name}__{Color.name.field.name}",
             f"{Garment.color.field.name}__{Color.color.field.name}",
@@ -131,9 +137,6 @@ class GarmentManager(django.db.models.Manager):
 
     def items_by_category(self, category):
         return self.all_items().filter(category=category)
-
-    def items_by_product_detail(self, product):
-        return self.all_items().filter(products=product)
 
     def get_garment_for_cart(self, garment_id):
         return (
@@ -183,6 +186,9 @@ class Garment(django.db.models.Model):
         "цена",
         help_text="цена одежды",
         default=0,
+        validators=[
+            django.core.validators.MinValueValidator(0),
+        ],
     )
 
     class Meta:
@@ -278,26 +284,48 @@ class ProductManager(django.db.models.Manager):
             self.filter(id=product_id).filter(garments__id=garment_id).exists()
         )
 
+    def product_detail(self, product_id):
+        return (
+            self.filter(id=product_id)
+            .select_related(
+                Product.image.related.name,
+            )
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    Product.additional_images.field.related_query_name(),
+                    queryset=ProductAdditionalImage.objects.select_related(
+                        ProductAdditionalImage.color.field.name,
+                        ProductAdditionalImage.category.field.name,
+                    ),
+                ),
+                django.db.models.Prefetch(
+                    Product.garments.field.name,
+                    queryset=Garment.objects.all_items(),
+                ),
+            )
+            .only(
+                Product.id.field.name,
+                Product.name.field.name,
+                Product.price.field.name,
+            )
+            .first()
+        )
+
 
 class Product(AbstractModel):
     objects = ProductManager()
     price = django.db.models.PositiveIntegerField(
         "цена",
         help_text="цена товара",
+        validators=[
+            django.core.validators.MinValueValidator(0),
+        ],
         default=0,
     )
     garments = django.db.models.ManyToManyField(
         Garment,
         verbose_name="одежды",
         help_text="одежда товара",
-        related_name="products",
-        related_query_name="products",
-    )
-    category = django.db.models.ForeignKey(
-        Category,
-        on_delete=django.db.models.CASCADE,
-        verbose_name="категория",
-        help_text="категория товара",
         related_name="products",
         related_query_name="products",
     )
@@ -309,13 +337,12 @@ class Product(AbstractModel):
             ),
             catalog.validators.validate_file_size,
         ],
-        null=True,
-        blank=True,
         verbose_name="файл вышивки",
         help_text="файл вышивки товара",
     )
 
     class Meta:
+        ordering = ["-id"]
         verbose_name = "товар"
         verbose_name_plural = "товары"
 
@@ -340,6 +367,10 @@ class ProductImage(BaseImage):
 
         return "изображение отсутствует"
 
+    image_tmb.short_description = "превью"
+    image_tmb.allow_tags = True
+    image_tmb.field_name = "image_tmb"
+
     def get_image_660x880(self):
         return sorl.thumbnail.get_thumbnail(
             self.image,
@@ -355,17 +386,14 @@ class ProductImage(BaseImage):
 
 
 class ProductAdditionalImageManager(django.db.models.Manager):
-    def get_images_for_garments(self, product, garments_data):
+    def get_images_for_garments(self, product):
         return (
             self.get_queryset()
             .select_related(
-                ProductAdditionalImage.category.field.name,
                 ProductAdditionalImage.color.field.name,
             )
             .filter(
                 product=product,
-                category__in=garments_data.values("category"),
-                color__in=garments_data.values("color"),
             )
         )
 
@@ -381,19 +409,19 @@ class ProductAdditionalImage(BaseImage):
         related_name="additional_images",
         related_query_name="additional_images",
     )
-    category = django.db.models.ForeignKey(
-        Category,
-        on_delete=django.db.models.CASCADE,
-        verbose_name="категория",
-        help_text="категория дополнительного изображения",
-        related_name="additional_images",
-        related_query_name="additional_images",
-    )
     color = django.db.models.ForeignKey(
         Color,
         on_delete=django.db.models.CASCADE,
         verbose_name="цвет",
         help_text="цвет дополнительного изображения",
+        related_name="additional_images",
+        related_query_name="additional_images",
+    )
+    category = django.db.models.ForeignKey(
+        Category,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="категория",
+        help_text="категория дополнительного изображения",
         related_name="additional_images",
         related_query_name="additional_images",
     )
@@ -404,6 +432,10 @@ class ProductAdditionalImage(BaseImage):
             return django.utils.safestring.mark_safe(tag)
 
         return "изображение отсутствует"
+
+    image_tmb.short_description = "превью"
+    image_tmb.allow_tags = True
+    image_tmb.field_name = "image_tmb"
 
     def get_image_330x440(self):
         return sorl.thumbnail.get_thumbnail(
@@ -421,15 +453,6 @@ class ProductAdditionalImage(BaseImage):
 
 class CartManager(django.db.models.Manager):
     def get_cart_with_items(self):
-        image_subquery = (
-            ProductAdditionalImage.objects.filter(
-                product_id=django.db.models.OuterRef("product_id"),
-                category_id=django.db.models.OuterRef("garment__category_id"),
-                color_id=django.db.models.OuterRef("garment__color_id"),
-            )
-            .order_by(ProductAdditionalImage.id.field.name)
-            .values(ProductAdditionalImage.image.field.name)[:1]
-        )
         return (
             super()
             .get_queryset()
@@ -453,13 +476,7 @@ class CartManager(django.db.models.Manager):
                                 f"{CartItem.garment.field.name}"
                                 f"__{Garment.category.field.name}"
                             ),
-                        )
-                        .annotate(
-                            matching_image=django.db.models.Subquery(
-                                image_subquery
-                            )
-                        )
-                        .only(
+                        ).only(
                             (
                                 f"{CartItem.cart.field.name}"
                                 f"__{Cart.id.field.name}"
@@ -489,6 +506,11 @@ class CartManager(django.db.models.Manager):
                                 f"{CartItem.garment.field.name}"
                                 f"__{Garment.color.field.name}"
                                 f"__{Color.color.field.name}"
+                            ),
+                            (
+                                f"{CartItem.garment.field.name}"
+                                f"__{Garment.color.field.name}"
+                                f"__{Color.name.field.name}"
                             ),
                             (
                                 f"{CartItem.garment.field.name}"
@@ -535,18 +557,18 @@ class Cart(django.db.models.Model):
 
 
 class CartItemManager(django.db.models.Manager):
-    def get_cart_item_for_update(self, user, item_id):
+    def get_cart_item_for_update(self, item_id):
         return (
             self.select_related(
                 CartItem.garment.field.name,
                 CartItem.product.field.name,
             )
             .filter(
-                cart__user=user,
                 id=item_id,
             )
             .only(
                 CartItem.quantity.field.name,
+                CartItem.cart.field.name,
                 (
                     f"{CartItem.garment.field.name}"
                     f"__{Garment.count.field.name}"
@@ -629,24 +651,6 @@ class OrderManager(django.db.models.Manager):
         raise Exception("Orders cannot be deleted, use cancel_order() instead")
 
     def get_orders_with_items(self, user):
-        image_subquery = (
-            ProductAdditionalImage.objects.filter(
-                product=django.db.models.OuterRef(
-                    OrderItem.product.field.name
-                ),
-                category=django.db.models.OuterRef(
-                    f"{OrderItem.garment.field.name}__"
-                    f"{Garment.category.field.name}"
-                ),
-                color=django.db.models.OuterRef(
-                    f"{OrderItem.garment.field.name}__"
-                    f"{Garment.color.field.name}"
-                ),
-            )
-            .order_by(ProductAdditionalImage.id.field.name)
-            .values(ProductAdditionalImage.image.field.name)[:1]
-        )
-
         return (
             self.filter(user=user)
             .select_related(
@@ -658,23 +662,8 @@ class OrderManager(django.db.models.Manager):
                     queryset=OrderItem.objects.select_related(
                         OrderItem.product.field.name,
                         (
-                            f"{OrderItem.garment.field.name}"
-                            f"__{Garment.category.field.name}"
-                        ),
-                        (
-                            f"{OrderItem.garment.field.name}"
-                            f"__{Garment.color.field.name}"
-                        ),
-                    )
-                    .annotate(
-                        matching_image=django.db.models.Subquery(
-                            image_subquery
-                        ),
-                    )
-                    .only(
-                        (
-                            f"{OrderItem.order.field.name}"
-                            f"__{Order.id.field.name}"
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.image.related.name}"
                         ),
                         (
                             f"{OrderItem.garment.field.name}"
@@ -683,22 +672,7 @@ class OrderManager(django.db.models.Manager):
                         (
                             f"{OrderItem.garment.field.name}"
                             f"__{Garment.color.field.name}"
-                            f"__{Color.color.field.name}"
                         ),
-                        (
-                            f"{OrderItem.garment.field.name}"
-                            f"__{Garment.size.field.name}"
-                        ),
-                        (
-                            f"{OrderItem.product.field.name}"
-                            f"__{Product.name.field.name}"
-                        ),
-                        (
-                            f"{OrderItem.product.field.name}"
-                            f"__{Product.embroidery.field.name}"
-                        ),
-                        OrderItem.quantity.field.name,
-                        OrderItem.price.field.name,
                     ),
                 ),
             )
@@ -709,24 +683,37 @@ class OrderManager(django.db.models.Manager):
                 Order.address.field.name,
                 Order.total_sum.field.name,
                 Order.user.field.name,
-                Order.created_at.field.name,
             )
         )
 
-    def get_orders_for_detail(self, user):
-        return self.get_orders_with_items(user).only(
+    def get_orders_for_detail(self, user, pk):
+        user_id_field_name = (
+            f"{Order.user.field.name}__{users.models.User.id.field.name}"
+        )
+        user_email_field_name = (
+            f"{Order.user.field.name}__{users.models.User.email.field.name}"
+        )
+        only = [
             Order.id.field.name,
             Order.status.field.name,
             Order.items.field.related_query_name(),
             Order.address.field.name,
             Order.phone.field.name,
             Order.total_sum.field.name,
-            f"{Order.user.field.name}__{users.models.User.id.field.name}",
-            f"{Order.user.field.name}__{users.models.User.email.field.name}",
+            user_id_field_name,
+            user_email_field_name,
             Order.payment_status.field.name,
             Order.confirmation_url.field.name,
             Order.payment_id.field.name,
             Order.created_at.field.name,
+        ]
+        return (
+            self.get_orders_with_items(user)
+            .filter(pk=pk)
+            .only(
+                *only,
+            )
+            .first()
         )
 
     def get_orders_for_staff(self, status):
@@ -1077,16 +1064,42 @@ class Order(django.db.models.Model):
 
     def cancel_order(self):
         if self.status == OrderStatus.WAITING_PAYMENT:
-            for order_item in self.items.select_related("garment").all():
-                order_item.garment.count += order_item.quantity
-                order_item.garment.save()
+            garments_ids = {
+                item.garment_id: item.quantity for item in self.items.all()
+            }
+            garments = Garment.objects.filter(
+                id__in=garments_ids.keys()
+            ).select_for_update()
+
+            for garment in garments:
+                garment.count = (
+                    django.db.models.F("count") + garments_ids[garment.id]
+                )
+
+            Garment.objects.bulk_update(
+                garments,
+                fields=[Garment.count.field.name],
+            )
 
             self.status = OrderStatus.CANCELED
             self.payment_status = PaymentStatus.CANCELED
-            self.save()
+            self.save(
+                update_fields=[
+                    Order.status.field.name,
+                    Order.payment_status.field.name,
+                ]
+            )
+            return
+
+        raise django.core.exceptions.ValidationError(
+            "Заказ может быть отменен только в статусе ожидания оплаты"
+        )
 
     def delete(self, *args, **kwargs):
-        raise Exception("Orders cannot be deleted, use cancel_order() instead")
+        raise django.core.exceptions.ValidationError(
+            "Заказы не могут быть удалены, используйте cancel_order() "
+            "вместо delete()"
+        )
 
     def __str__(self):
         return f"Заказ №{self.id}"

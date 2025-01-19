@@ -25,7 +25,7 @@ urlpatterns = [
         name="products",
     ),
     django.urls.path(
-        "product/<int:product_id>/",
+        "product/<int:pk>/",
         catalog.views.ProductDetailView.as_view(),
         name="product-detail",
     ),
@@ -40,22 +40,17 @@ urlpatterns = [
         name="cart",
     ),
     django.urls.path(
-        "cart/item/",
+        "cart/item/<int:pk>/",
         catalog.views.UpdateCartItemView.as_view(),
         name="update-cart-item",
     ),
     django.urls.path(
-        "order/create/",
-        catalog.views.CreateOrderView.as_view(),
-        name="create-order",
-    ),
-    django.urls.path(
-        "orders/history/",
+        "orders/",
         catalog.views.OrderHistoryView.as_view(),
         name="order-history",
     ),
     django.urls.path(
-        "orders/<int:order_id>/",
+        "orders/<int:pk>/",
         catalog.views.OrderDetailView.as_view(),
         name="order-detail",
     ),

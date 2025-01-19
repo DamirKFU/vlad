@@ -1,3 +1,8 @@
+import shutil
+
+import django.conf
+import django.core.files.uploadedfile
+import django.db
 import django.test
 import parameterized.parameterized
 
@@ -5,255 +10,571 @@ import catalog.models
 import users.models
 
 
-class CategoryModelTest(django.test.TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория 1",
+TEST_MEDIA_ROOT = django.conf.settings.BASE_DIR / "test_media"
+
+
+class TestCategoryModel(django.test.TestCase):
+    @parameterized.parameterized.expand(
+        [
+            "Тест",
+            "Т" * 150,
+        ]
+    )
+    def test_access_add_category(self, name):
+        catalog_item = catalog.models.Category(
+            name=name,
         )
+        catalog_item.full_clean()
+        catalog_item.save()
 
     @parameterized.parameterized.expand(
         [
-            ("Тестовая категория 2", True),
-            ("", False),
-            ("x" * 151, False),
+            "",
+            "Т" * 151,
         ]
     )
-    def test_category_name_validation(self, value, expected):
-        category = catalog.models.Category(name=value)
-        if expected:
-            try:
-                category.full_clean()
-            except django.core.exceptions.ValidationError:
-                self.fail("Валидная категория не проходит валидацию")
-        else:
-            with self.assertRaises(
-                django.core.exceptions.ValidationError,
-                msg="Невалидная категория проходит валидацию",
-            ):
-                category.full_clean()
-
-    def test_category_str(self):
-        self.assertEqual(
-            str(self.category),
-            "Тестовая категория 1",
-            "Неверное строковое представление категории",
+    def test_error_add_category(self, name):
+        catalog_item = catalog.models.Category(
+            name=name,
         )
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            catalog_item.full_clean()
+            catalog_item.save()
+
+    def test_unique_category(self):
+        category_1 = catalog.models.Category(
+            name="Тест",
+        )
+        category_1.full_clean()
+        category_1.save()
+
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            category_2 = catalog.models.Category(
+                name="Тест",
+            )
+            category_2.full_clean()
+            category_2.save()
 
 
-class ColorModelTest(django.test.TestCase):
+class TestColorModel(django.test.TestCase):
+    @parameterized.parameterized.expand(
+        [
+            "#008000",
+            "#008000",
+            "#ffffff",
+        ]
+    )
+    def test_access_add_color(self, color):
+        color = catalog.models.Color(
+            name="Тест",
+            color=color,
+        )
+        color.full_clean()
+        color.save()
+
+    @parameterized.parameterized.expand(
+        [
+            "test",
+            "#008@000",
+            "#f#fffff",
+        ]
+    )
+    def test_error_add_color(self, color):
+        color = catalog.models.Color(
+            name="Тест",
+            color=color,
+        )
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            color.full_clean()
+            color.save()
+
+
+class TestGarmentModel(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.category = catalog.models.Category.objects.create(
+            name="Тестовая категория",
+        )
         cls.color = catalog.models.Color.objects.create(
-            name="Зеленый",
+            name="Тестовый цвет",
             color="#008000",
         )
 
     @parameterized.parameterized.expand(
         [
-            ("Зеленый2", "#008000", True),
-            ("", "#008000", False),
-            ("x" * 151, "#008000", False),
-            ("Тест1", "invalid_hex", False),
-            ("Тест2", "#fff", True),
-            ("Тест3", "#ffffff", True),
-            ("Тест4", "ffffff", False),
+            (catalog.models.Size.M, 10, 100, True),
+            (catalog.models.Size.S, 10, 100, True),
+            (catalog.models.Size.L, 10, 100, True),
+            (catalog.models.Size.XL, 10, 100, True),
+            ("INVALID", 10, 100, False),
+            ("XXLL", 10, 100, False),
+            (catalog.models.Size.M, 0, 100, True),
+            (catalog.models.Size.M, 0, 0, True),
+            (catalog.models.Size.M, -1, 100, False),
+            (catalog.models.Size.M, 10, -1, False),
         ]
     )
-    def test_color_validation(self, color_name, hex_value, expected):
-        color = catalog.models.Color(name=color_name, color=hex_value)
+    def test_access_add_garment(self, size, count, price, expected):
+        garment = catalog.models.Garment(
+            category=self.category,
+            color=self.color,
+            size=size,
+            count=count,
+            price=price,
+        )
         if expected:
-            try:
-                color.full_clean()
-            except django.core.exceptions.ValidationError:
-                self.fail("Валидный цвет не проходит валидацию")
+            garment.full_clean()
+            garment.save()
         else:
-            with self.assertRaises(
-                django.core.exceptions.ValidationError,
-                msg=f"Невалидный цвет проходит валидацию {color_name}",
-            ):
-                color.full_clean()
+            with self.assertRaises(django.core.exceptions.ValidationError):
+                garment.full_clean()
+                garment.save()
+
+    def test_unique_garment(self):
+        garment_1 = catalog.models.Garment(
+            category=self.category,
+            color=self.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
+        )
+        garment_1.full_clean()
+        garment_1.save()
+
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            garment_2 = catalog.models.Garment(
+                category=self.category,
+                color=self.color,
+                size=catalog.models.Size.M,
+                count=10,
+                price=100,
+            )
+            garment_2.full_clean()
+            garment_2.save()
 
 
-class ItemModelTest(django.test.TestCase):
+@django.test.override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+class TestProductModel(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория"
+            name="Тестовая категория",
         )
         cls.color = catalog.models.Color.objects.create(
-            name="Зеленый", color="#008000"
+            name="Тестовый цвет",
+            color="#008000",
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
             count=10,
+            price=100,
         )
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpassword",
+        )
+        cls.embroidery_jef = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test.jef",
+            content=b"test",
+            content_type="application/octet-stream",
+        )
+        cls.embroidery_png = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test.png",
+            content=b"test",
+            content_type="image/png",
+        )
+        cls.image = django.core.files.uploadedfile.SimpleUploadedFile(
+            name="test.jpg",
+            content=b"test",
+            content_type="image/jpeg",
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
 
     @parameterized.parameterized.expand(
         [
-            (catalog.models.Size.M, True),
-            (catalog.models.Size.S, True),
-            (catalog.models.Size.L, True),
-            (catalog.models.Size.XL, True),
-            ("INVALID", False),
-            ("XXLL", False),
-        ]
-    )
-    def test_item_size_validation(self, size, expected):
-        category = catalog.models.Category.objects.create(
-            name="Тестовая категория 2"
-        )
-        color = catalog.models.Color.objects.create(
-            name="Красный", color="#FF0000"
-        )
-        garment = catalog.models.Garment(
-            category=category,
-            color=color,
-            size=size,
-            count=10,
-        )
-        if expected:
-            try:
-                garment.full_clean()
-            except django.core.exceptions.ValidationError:
-                self.fail("Валидный размер не проходит валидацию")
-        else:
-            with self.assertRaises(
-                django.core.exceptions.ValidationError,
-                msg="Невалидный размер проходит валидацию",
-            ):
-                garment.full_clean()
-
-    @parameterized.parameterized.expand(
-        [
-            (10, True),
+            (100, True),
             (0, True),
             (-1, False),
         ]
     )
-    def test_item_count_validation(self, count, expected):
-        category = catalog.models.Category.objects.create(
-            name="Тестовая категория 2"
-        )
-        color = catalog.models.Color.objects.create(
-            name="Красный", color="#FF0000"
-        )
-        garment = catalog.models.Garment(
-            category=category,
-            color=color,
-            size=catalog.models.Size.M,
-            count=count,
+    def test_price_add_product(self, price, expected):
+        product = catalog.models.Product(
+            price=price,
+            name="Тестовый товар",
+            embroidery=self.embroidery_jef,
         )
         if expected:
-            try:
-                garment.full_clean()
-            except django.core.exceptions.ValidationError:
-                self.fail("Валидное количество не проходит валидацию")
+            product.full_clean()
+            product.save()
         else:
-            with self.assertRaises(
-                django.core.exceptions.ValidationError,
-                msg="Невалидное количество проходит валидацию",
-            ):
-                garment.full_clean()
+            with self.assertRaises(django.core.exceptions.ValidationError):
+                product.full_clean()
+                product.save()
 
-    def test_item_str(self):
-        expected = (
-            f"Одежда({self.category}, {self.color}, {self.garment.size})"
+    def test_unique_product(self):
+        product_1 = catalog.models.Product(
+            price=100,
+            name="Тестовый товар",
+            embroidery=self.embroidery_jef,
         )
-        self.assertEqual(
-            str(self.garment),
-            expected,
-            "Неверное строковое представление товара",
-        )
+        product_1.full_clean()
+        product_1.save()
 
-    def test_item_unique_together(self):
-        with self.assertRaises(
-            django.core.exceptions.ValidationError,
-            msg="Валидация пропускает дубликат товара",
-        ):
-            duplicate_garment = catalog.models.Garment(
-                category=self.category,
-                color=self.color,
-                size=catalog.models.Size.M,
-                count=5,
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            product_2 = catalog.models.Product(
+                price=100,
+                name="Тестовый товар",
             )
-            duplicate_garment.full_clean()
+            product_2.full_clean()
+            product_2.save()
 
-    def test_item_manager(self):
-        garments = catalog.models.Garment.objects.all_items()
-        self.assertTrue(
-            len(garments) > 0,
-            "Менеджер не возвращает товары",
+    def test_embroidery_add_product(self):
+        product = catalog.models.Product(
+            price=100,
+            name="Тестовый товар",
+            embroidery=self.embroidery_jef,
         )
-        garment = garments[0]
-        required_fields = {
-            "id",
-            "size",
-            "count",
-            "category__name",
-            "color__name",
-            "color__color",
-        }
-        self.assertEqual(
-            set(garment.keys()),
-            required_fields,
-            "Менеджер возвращает неверный набор полей",
+        product_2 = catalog.models.Product(
+            price=100,
+            name="Тестовый товар",
+            embroidery=self.embroidery_png,
+        )
+        product.full_clean()
+        product.save()
+
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            product_2.full_clean()
+            product_2.save()
+
+    def test_image_access_add_product(self):
+        product = catalog.models.Product(
+            price=100,
+            name="Тестовый товар",
+            embroidery=self.embroidery_jef,
+        )
+        product.full_clean()
+        product.save()
+
+        product_image = catalog.models.ProductImage(
+            product=product,
+            image=self.image,
+        )
+        product_image.full_clean()
+        product_image.save()
+
+        product_additional_image = catalog.models.ProductAdditionalImage(
+            product=product,
+            image=self.image,
+            color=self.color,
+            category=self.category,
+        )
+        product_additional_image.full_clean()
+        product_additional_image.save()
+
+    def test_image_error_add_product(self):
+        product = catalog.models.Product(
+            price=100,
+            name="Тестовый товар",
+            embroidery=self.embroidery_jef,
+        )
+        product.full_clean()
+        product.save()
+
+        product_image = catalog.models.ProductImage(
+            product=product,
+            image=self.embroidery_jef,
+        )
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            product_image.full_clean()
+            product_image.save()
+
+        product_additional_image = catalog.models.ProductAdditionalImage(
+            product=product,
+            image=self.embroidery_jef,
+            color=self.color,
         )
 
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            product_additional_image.full_clean()
+            product_additional_image.save()
 
-class ConstructorProductModelTest(django.test.TestCase):
+
+class CartModelTest(django.test.TestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpassword",
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def test_access_add_cart(self):
+        cart = catalog.models.Cart(
+            user=self.user,
+        )
+        cart.full_clean()
+        cart.save()
+
+
+class CartItemModelTest(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpassword",
+        )
+        cls.cart = catalog.models.Cart.objects.create(
+            user=cls.user,
+        )
         cls.category = catalog.models.Category.objects.create(
-            name="Тестовая категория"
+            name="Тестовая категория",
+        )
+        cls.product = catalog.models.Product.objects.create(
+            price=100,
+            name="Тестовый товар",
         )
         cls.color = catalog.models.Color.objects.create(
-            name="Зеленый", color="#008000"
+            name="Тестовый цвет",
+            color="#008000",
         )
         cls.garment = catalog.models.Garment.objects.create(
             category=cls.category,
             color=cls.color,
             size=catalog.models.Size.M,
             count=10,
+            price=100,
         )
-        cls.user = users.models.User.objects.create_user(username="testuser")
-        cls.constructor_product = (
-            catalog.models.ConstructorProduct.objects.create(
-                garment=cls.garment,
-                user=cls.user,
-            )
-        )
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
 
     @parameterized.parameterized.expand(
         [
-            (catalog.models.ConstructorProductStatus.IN_MODERATION, True),
-            (catalog.models.ConstructorProductStatus.ACCEPTED, True),
-            (catalog.models.ConstructorProductStatus.REJECTED, True),
-            ("INVALID", False),
-            ("TOOLONG", False),
+            (1, True),
+            (0, False),
+            (-1, False),
         ]
     )
-    def test_constructor_product_status_validation(self, status, expected):
-        product = catalog.models.ConstructorProduct(
-            garment=self.garment, user=self.user, status=status
+    def test_quantity_add_cart_item(self, quantity, expected):
+        cart_item = catalog.models.CartItem(
+            product=self.product,
+            cart=self.cart,
+            garment=self.garment,
+            quantity=quantity,
         )
         if expected:
-            try:
-                product.full_clean()
-            except django.core.exceptions.ValidationError:
-                self.fail("Валидный статус не проходит валидацию")
+            cart_item.full_clean()
+            cart_item.save()
         else:
-            with self.assertRaises(
-                django.core.exceptions.ValidationError,
-                msg="Невалидный статус проходит валидацию",
-            ):
-                product.full_clean()
+            with self.assertRaises(django.core.exceptions.ValidationError):
+                cart_item.full_clean()
+                cart_item.save()
 
-    def test_constructor_product_str(self):
-        self.assertEqual(
-            str(self.constructor_product),
-            "Товар Конструктора",
-            "Неверное строковое представление",
+    def test_total_price_cart_item(self):
+        cart_item = catalog.models.CartItem(
+            product=self.product,
+            cart=self.cart,
+            garment=self.garment,
+            quantity=2,
         )
+        self.assertEqual(cart_item.total_price, 400)
+
+
+class OrderModelTest(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpassword",
+        )
+        cls.phone = "+79999999999"
+        cls.address = "Тестовый адрес"
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def test_access_add_order(self):
+        order = catalog.models.Order(
+            user=self.user,
+            phone=self.phone,
+            address=self.address,
+        )
+        order.full_clean()
+        order.save()
+
+    @parameterized.parameterized.expand(
+        [
+            ("+79631231248", True),
+            ("89631231248", True),
+            ("+7999", False),
+            ("19999999999", False),
+            ("", False),
+        ]
+    )
+    def test_phone_validation(self, phone, expected):
+        order = catalog.models.Order(
+            user=self.user,
+            phone=phone,
+            address=self.address,
+        )
+        if expected:
+            order.full_clean()
+            order.save()
+        else:
+            with self.assertRaises(django.core.exceptions.ValidationError):
+                order.full_clean()
+                order.save()
+
+    @parameterized.parameterized.expand(
+        [
+            ("Тестовый адрес", True),
+            ("", False),
+            ("x" * 256, False),
+            ("x" * 255, True),
+        ]
+    )
+    def test_address_validation(self, address, expected):
+        order = catalog.models.Order(
+            user=self.user,
+            phone=self.phone,
+            address=address,
+        )
+        if expected:
+            order.full_clean()
+            order.save()
+        else:
+            with self.assertRaises(django.core.exceptions.ValidationError):
+                order.full_clean()
+                order.save()
+
+    def test_unique_order(self):
+        order_1 = catalog.models.Order(
+            user=self.user,
+            phone=self.phone,
+            address=self.address,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+        )
+        order_2 = catalog.models.Order(
+            user=self.user,
+            phone=self.phone,
+            address=self.address,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+        )
+        order_1.full_clean()
+        order_1.save()
+
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            order_2.full_clean()
+            order_2.save()
+
+        order_1.status = catalog.models.OrderStatus.IN_DELIVERY
+        order_1.save()
+
+        order_2.full_clean()
+        order_2.save()
+
+    def test_delete_order(self):
+        order = catalog.models.Order(
+            user=self.user,
+            phone=self.phone,
+            address=self.address,
+            status=catalog.models.OrderStatus.WAITING_PAYMENT,
+        )
+        order.full_clean()
+        order.save()
+        with self.assertRaises(django.core.exceptions.ValidationError):
+            order.delete()
+
+        order.cancel_order()
+        self.assertEqual(order.status, catalog.models.OrderStatus.CANCELED)
+
+
+class OrderItemModelTest(django.test.TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser",
+            password="testpassword",
+        )
+        cls.phone = "+79999999999"
+        cls.address = "Тестовый адрес"
+        cls.order = catalog.models.Order.objects.create(
+            user=cls.user,
+            phone=cls.phone,
+            address=cls.address,
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="Тестовая категория",
+        )
+        cls.product = catalog.models.Product.objects.create(
+            price=100,
+            name="Тестовый товар",
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="Тестовый цвет",
+            color="#008000",
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            category=cls.category,
+            color=cls.color,
+            size=catalog.models.Size.M,
+            count=10,
+            price=100,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def test_access_add_order_item(self):
+        order_item = catalog.models.OrderItem(
+            order=self.order,
+            product=self.product,
+            garment=self.garment,
+            quantity=1,
+            price=100,
+        )
+        order_item.full_clean()
+        order_item.save()
+
+    def test_total_price_order_item(self):
+        order_item = catalog.models.OrderItem(
+            order=self.order,
+            product=self.product,
+            garment=self.garment,
+            quantity=2,
+            price=100,
+        )
+        order_item.full_clean()
+        order_item.save()
+        self.assertEqual(order_item.total_price, 200)
+
+    def test_delete_order_item(self):
+        order_item = catalog.models.OrderItem(
+            order=self.order,
+            product=self.product,
+            garment=self.garment,
+            quantity=2,
+            price=100,
+        )
+        order_item.full_clean()
+        order_item.save()
+        self.order.cancel_order()
+        self.garment.refresh_from_db()
+        self.assertEqual(order_item.garment.count, 12)

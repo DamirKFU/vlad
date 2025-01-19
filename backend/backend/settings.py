@@ -4,16 +4,28 @@ import pathlib
 import dotenv
 import urllib3
 
+
+def is_true_env(env_name):
+    return os.environ.get(env_name) == "True"
+
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-dotenv.load_dotenv()
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
 
+dotenv.load_dotenv(BASE_DIR / ".env.development")
+
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-DEBUG = True
+DEBUG = is_true_env("DEBUG")
 
-DEFAULT_VERIFED_EMAIL = False
+DEFAULT_VERIFED_EMAIL = is_true_env("DEFAULT_VERIFED_EMAIL")
+
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(",")
+
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS").split(",")
+
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -74,11 +86,11 @@ WSGI_APPLICATION = "backend.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "myproject",
-        "USER": "myprojectuser",
-        "PASSWORD": "password",
-        "HOST": "localhost",
-        "PORT": "",
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
     }
 }
 
@@ -116,37 +128,17 @@ REST_FRAMEWORK = {
 CORS_ALLOW_CREDENTIALS = True
 
 if DEBUG:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-    CSRF_TRUSTED_ORIGINS = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "ws://localhost:8000",
-    ]
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "ws://localhost:8000",
-    ]
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
     INTERNAL_IPS = os.getenv("DJANGO_INTERNAL_IPS", "127.0.0.1").split(",")
 
-else:
-    host = os.getenv("HOST")
-    port = os.getenv("PORT")
-    ALLOWED_HOSTS = [host]
-    CSRF_TRUSTED_ORIGINS = [f"https://{host}:{port}"]
-    CORS_ALLOWED_ORIGINS = [
-        f"https://{host}:{port}",
-    ]
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SAMESITE = "None"
-    SESSION_COOKIE_SAMESITE = "None"
-    CSRF_COOKIE_HTTPONLY = False
-    SESSION_COOKIE_HTTPONLY = True
+
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE")
+CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE")
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
+CSRF_COOKIE_HTTPONLY = os.getenv("CSRF_COOKIE_HTTPONLY")
+SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY")
 
 
 AUTH_USER_MODEL = "users.User"
@@ -186,12 +178,13 @@ YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
 
-SITE_URL = "http://localhost:3000"
+SITE_URL = os.getenv("SITE_URL")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 CELERY_ONCE = {
     "backend": "celery_once.backends.Redis",
@@ -237,9 +230,9 @@ LOGGING = {
     },
 }
 
-ELASTICSEARCH_HOST = "http://localhost:9200"
-ELASTICSEARCH_USER = "elastic"
-ELASTICSEARCH_PASSWORD = "WZNXKNqpcaQtrCigSno9"
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
+ELASTICSEARCH_USER = os.getenv("ELASTICSEARCH_USER")
+ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD")
 
 ELASTICSEARCH_DSL = {
     "default": {
@@ -257,7 +250,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": ["redis://localhost:6379/2"],
+            "hosts": [os.getenv("CHANNEL_LAYERS_HOST")],
             "symmetric_encryption_keys": [SECRET_KEY],
         },
     },

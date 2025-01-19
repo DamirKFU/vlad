@@ -7,15 +7,20 @@ import catalog.models
 class ConstructorProductImageInline(
     sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
 ):
-    fields = ["image", "image_tmb"]
-    readonly_fields = ["image_tmb"]
+    fields = [
+        catalog.models.ConstructorProductImage.image.field.name,
+        catalog.models.ConstructorProductImage.image_tmb.field_name,
+    ]
+    readonly_fields = [
+        catalog.models.ConstructorProductImage.image_tmb.field_name
+    ]
     model = catalog.models.ConstructorProductImage
 
 
 class ConstructorEmbroideryImageInline(
     sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
 ):
-    fields = ["image"]
+    fields = [catalog.models.ConstructorEmbroideryImage.image.field.name]
     model = catalog.models.ConstructorEmbroideryImage
 
 
@@ -23,8 +28,11 @@ class ProductImageInline(
     sorl.thumbnail.admin.AdminImageMixin,
     django.contrib.admin.TabularInline,
 ):
-    fields = ["image", "image_tmb"]
-    readonly_fields = ["image_tmb"]
+    fields = [
+        catalog.models.ProductImage.image.field.name,
+        catalog.models.ProductImage.image_tmb.field_name,
+    ]
+    readonly_fields = [catalog.models.ProductImage.image_tmb.field_name]
     model = catalog.models.ProductImage
 
 
@@ -32,8 +40,15 @@ class ProductAdditionalImageInline(
     sorl.thumbnail.admin.AdminImageMixin,
     django.contrib.admin.TabularInline,
 ):
-    fields = ["image", "image_tmb", "category", "color"]
-    readonly_fields = ["image_tmb"]
+    fields = [
+        catalog.models.ProductAdditionalImage.image.field.name,
+        catalog.models.ProductAdditionalImage.image_tmb.field_name,
+        catalog.models.ProductAdditionalImage.color.field.name,
+        catalog.models.ProductAdditionalImage.category.field.name,
+    ]
+    readonly_fields = [
+        catalog.models.ProductAdditionalImage.image_tmb.field_name
+    ]
     model = catalog.models.ProductAdditionalImage
     extra = 1
 
@@ -87,7 +102,7 @@ class ProductAdmin(django.contrib.admin.ModelAdmin):
         catalog.models.Product.price.field.name,
     )
     list_display_links = (catalog.models.Product.name.field.name,)
-    filter_horizontal = ("garments",)
+    filter_horizontal = (catalog.models.Product.garments.field.name,)
     inlines = [
         ProductImageInline,
         ProductAdditionalImageInline,

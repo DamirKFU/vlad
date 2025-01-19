@@ -1,3 +1,5 @@
+import celery_once
+import django.core.exceptions
 import django.db
 import django.shortcuts
 import rest_framework.decorators
@@ -7,6 +9,7 @@ import rest_framework.permissions
 import rest_framework.response
 import rest_framework.status as status
 import rest_framework.views
+import rest_framework.viewsets
 
 import catalog.models
 import catalog.pagination
@@ -16,15 +19,14 @@ import catalog.utils
 import core.utils
 
 
-class GarmentListView(rest_framework.views.APIView):
+class GarmentListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
+    serializer_class = catalog.serializers.GarmentSerializer
+    queryset = catalog.models.Garment.objects.all_items()
 
-    @django.db.transaction.atomic
     def get(self, request, *args, **kwargs):
-        garments_data = catalog.models.Garment.objects.all_items()
-        data = catalog.utils.get_structured_garments(garments_data)
         return core.utils.success_response(
-            data=data,
+            data=super().get(request, *args, **kwargs).data,
             message="Одежда успешно получена",
         )
 
@@ -58,6 +60,9 @@ class ProductListView(rest_framework.generics.ListAPIView):
     queryset = catalog.models.Product.objects.all()
     pagination_class = catalog.pagination.ProductPagination
 
+    def get_queryset(self):
+        return super().get_queryset()
+
     def get(self, request, *args, **kwargs):
         responce = super().get(request, *args, **kwargs)
         return core.utils.success_response(
@@ -68,33 +73,19 @@ class ProductListView(rest_framework.generics.ListAPIView):
 class ProductDetailView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
 
-    def get(self, request, product_id, *args, **kwargs):
-        product = (
-            catalog.models.Product.objects.select_related(
-                catalog.models.Product.image.related.name
-            )
-            .filter(id=product_id)
-            .first()
-        )
+    def get(self, request, pk, *args, **kwargs):
+        product = catalog.models.Product.objects.product_detail(pk)
         if not product:
             return core.utils.error_response(
                 message="Продукт не найден",
                 http_status=status.HTTP_404_NOT_FOUND,
             )
 
-        garments_data = product.garments.items_by_product_detail(product)
-        result = {
-            "id": product.id,
-            "name": product.name,
-            "price": product.price,
-            "image": self.request.build_absolute_uri(product.image.image.url),
-            "garments": catalog.utils.get_structured_garments(garments_data),
-            "images": catalog.utils.get_structured_images(
-                product, garments_data, request
-            ),
-        }
+        serializer = catalog.serializers.ProductDetailSerializer(
+            product, context={"request": request}
+        )
         return core.utils.success_response(
-            data=result, message="Продукт успешно получен"
+            data=serializer.data, message="Продукт успешно получен"
         )
 
 
@@ -121,21 +112,14 @@ class AddToCartView(rest_framework.generics.GenericAPIView):
 
 class CartView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
+    queryset = catalog.models.Cart.objects.get_cart_with_items()
 
     def get(self, request, *args, **kwargs):
-        cart_serializer = catalog.serializers.CartSerializer(
-            data={}, context={"request": request}
+        cart, _ = self.queryset.filter(user=request.user).get_or_create(
+            user=request.user
         )
-        if not cart_serializer.is_valid():
-            return core.utils.error_response(
-                serializer_errors=cart_serializer.errors,
-                message="Ошибка валидации",
-            )
-
-        cart = cart_serializer.validated_data["cart"]
-
-        item_serializer = catalog.serializers.CartItemSerializer(
-            cart.items.all(), many=True, context={"request": request}
+        item_serializer = catalog.serializers.CartSerializer(
+            cart, context={"request": request}
         )
 
         return core.utils.success_response(
@@ -143,71 +127,67 @@ class CartView(rest_framework.views.APIView):
         )
 
 
-class UpdateCartItemView(rest_framework.views.APIView):
+class UpdateCartItemView(rest_framework.generics.GenericAPIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
+    serializer_class = catalog.serializers.UpdateCartItemSerializer
 
     @django.db.transaction.atomic
-    def patch(self, request, *args, **kwargs):
+    def patch(self, request, pk, *args, **kwargs):
+        cart_item = request.user.cart.items.get_cart_item_for_update(
+            item_id=pk
+        )
+        if not cart_item:
+            return core.utils.error_response(
+                message="Товар не найден в корзине",
+                http_status=status.HTTP_404_NOT_FOUND,
+            )
+
         serializer = catalog.serializers.UpdateCartItemSerializer(
             data=request.data,
-            context={"request": request},
+            context={"cart_item": cart_item},
         )
         if not serializer.is_valid():
             return core.utils.error_response(
                 serializer_errors=serializer.errors,
+                message="Ошибка валидации",
             )
 
         return core.utils.success_response(
-            data=serializer.update(
-                serializer.validated_data["cart_item"],
-                serializer.validated_data,
-            ),
+            data=serializer.save(),
             message="Количество товара успешно обновлено",
         )
 
     @django.db.transaction.atomic
-    def delete(self, request, *args, **kwargs):
-        serializer = catalog.serializers.DeleteCartItemSerializer(
-            data=request.data, context={"request": request}
-        )
+    def delete(self, request, pk, *args, **kwargs):
+        cart_item = request.user.cart.items.filter(id=pk).first()
 
-        if not serializer.is_valid():
+        if not cart_item:
             return core.utils.error_response(
-                serializer_errors=serializer.errors, message="Ошибка валидации"
+                message="Товар не найден в корзине",
+                http_status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer.save()
+        cart_item.delete()
 
         return core.utils.success_response(
             message="Товар успешно удален из корзины"
         )
 
 
-class CreateOrderView(rest_framework.generics.GenericAPIView):
-    permission_classes = (rest_framework.permissions.IsAuthenticated,)
-    serializer_class = catalog.serializers.CreateOrderSerializer
-
-    def post(self, request, *args, **kwargs):
-        task = catalog.tasks.create_order_task.delay(
-            data=request.data, user_id=request.user.id
-        )
-
-        return core.utils.success_response(
-            data={"task_id": task.id},
-            message="Задача создания заказа запущена",
-            http_status=status.HTTP_201_CREATED,
-        )
-
-
 class OrderHistoryView(rest_framework.generics.ListAPIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
     pagination_class = catalog.pagination.OrderPagination
-    serializer_class = catalog.serializers.OrderSerializer
 
     def get_queryset(self):
         return catalog.models.Order.objects.get_orders_with_items(
             user=self.request.user
         )
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return catalog.serializers.CreateOrderSerializer
+
+        return catalog.serializers.OrderSerializer
 
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -221,20 +201,21 @@ class OrderHistoryView(rest_framework.generics.ListAPIView):
             message="Заказы успешно получены",
         )
 
-    @django.db.transaction.atomic
     def post(self, request, *args, **kwargs):
-        serializer = catalog.serializers.CancelOrderSerializer(
-            data=request.data, context={"request": request}
-        )
-        if not serializer.is_valid():
+        try:
+            task = catalog.tasks.create_order_task.delay(
+                data=request.data, user_id=request.user.id
+            )
+        except celery_once.AlreadyQueued:
             return core.utils.error_response(
-                serializer_errors=serializer.errors,
-                message="Ошибка валидации",
+                message="Задача уже запущена",
+                http_status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-        serializer.save()
         return core.utils.success_response(
-            message="Заказ успешно отменен",
+            data={"task_id": task.id},
+            message="Задача создания заказа запущена",
+            http_status=status.HTTP_201_CREATED,
         )
 
 
@@ -242,15 +223,10 @@ class OrderDetailView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.IsAuthenticated,)
 
     @django.db.transaction.atomic
-    def get(self, request, order_id, *args, **kwargs):
-        order = (
-            catalog.models.Order.objects.get_orders_for_detail(
-                user=request.user,
-            )
-            .filter(
-                id=order_id,
-            )
-            .first()
+    def get(self, request, pk, *args, **kwargs):
+        order = catalog.models.Order.objects.get_orders_for_detail(
+            user=request.user,
+            pk=pk,
         )
 
         if not order:
@@ -267,4 +243,28 @@ class OrderDetailView(rest_framework.views.APIView):
         return core.utils.success_response(
             data=serializer.data,
             message="Заказ успешно получен",
+        )
+
+    @django.db.transaction.atomic
+    def delete(self, request, pk, *args, **kwargs):
+        order = catalog.models.Order.objects.filter(
+            user=request.user,
+            id=pk,
+        ).first()
+
+        if not order:
+            return core.utils.error_response(
+                message="Заказ не найден",
+                http_status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            order.cancel_order()
+        except django.core.exceptions.ValidationError as e:
+            return core.utils.error_response(
+                message=str(e.message),
+            )
+
+        return core.utils.success_response(
+            message="Заказ успешно отменен",
         )
