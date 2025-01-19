@@ -155,6 +155,7 @@ cython_debug/
 
 # setting variables
 .env
+.env.development
 
 # vscode
 .vscode/
