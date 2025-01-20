@@ -5,7 +5,7 @@ import dotenv
 import urllib3
 
 
-def is_true_env(env_name):
+def is_true_env(env_name, default=False):
     data = os.environ.get(env_name)
     if data is None:
         raise ValueError(f"Environment variable {env_name} is not set")
@@ -13,7 +13,7 @@ def is_true_env(env_name):
     return data.lower() == "true"
 
 
-def list_env(env_name):
+def list_env(env_name, default=None):
     data = os.environ.get(env_name)
     if data is None:
         raise ValueError(f"Environment variable {env_name} is not set")
@@ -144,12 +144,12 @@ if DEBUG:
     INTERNAL_IPS = os.getenv("DJANGO_INTERNAL_IPS", "127.0.0.1").split(",")
 
 
-CSRF_COOKIE_SECURE = is_true_env("CSRF_COOKIE_SECURE")
-SESSION_COOKIE_SECURE = is_true_env("SESSION_COOKIE_SECURE")
-CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE")
-SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
-CSRF_COOKIE_HTTPONLY = is_true_env("CSRF_COOKIE_HTTPONLY")
-SESSION_COOKIE_HTTPONLY = is_true_env("SESSION_COOKIE_HTTPONLY")
+CSRF_COOKIE_SECURE = is_true_env("CSRF_COOKIE_SECURE", default=False)
+SESSION_COOKIE_SECURE = is_true_env("SESSION_COOKIE_SECURE", default=False)
+CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax")
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_HTTPONLY = is_true_env("CSRF_COOKIE_HTTPONLY", default=False)
+SESSION_COOKIE_HTTPONLY = is_true_env("SESSION_COOKIE_HTTPONLY", default=False)
 
 
 AUTH_USER_MODEL = "users.User"
