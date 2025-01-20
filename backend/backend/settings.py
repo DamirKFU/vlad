@@ -276,7 +276,12 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.getenv("CHANNEL_LAYERS_HOST")],
+            "hosts": [
+                os.getenv(
+                    "CHANNEL_LAYERS_HOST",
+                    "redis://localhost:6379/2",
+                )
+            ],
             "symmetric_encryption_keys": [SECRET_KEY],
         },
     },
