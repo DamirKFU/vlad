@@ -6,7 +6,7 @@ import urllib3
 
 
 def is_true_env(env_name, default=False):
-    data = os.environ.get(env_name)
+    data = os.environ.get(env_name, default)
     if data is None:
         raise ValueError(f"Environment variable {env_name} is not set")
 
@@ -14,7 +14,7 @@ def is_true_env(env_name, default=False):
 
 
 def list_env(env_name, default=None):
-    data = os.environ.get(env_name)
+    data = os.environ.get(env_name, default)
     if data is None:
         raise ValueError(f"Environment variable {env_name} is not set")
 
