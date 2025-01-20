@@ -19,3 +19,4 @@ flake8-type-ignore==0.1.0.post2
 flake8-use-pathlib==0.3.0
 parameterized==0.9.0
 pep8-naming==0.13.3
+daphne==4.1.2
