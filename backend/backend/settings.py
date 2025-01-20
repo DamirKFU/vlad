@@ -5,12 +5,12 @@ import dotenv
 import urllib3
 
 
-def is_true_env(env_name, default=False):
-    data = str(os.environ.get(env_name, default))
+def is_true_env(env_name, default=None):
+    data = os.environ.get(env_name, default)
     if data is None:
         raise ValueError(f"Environment variable {env_name} is not set")
 
-    return data.lower() == "true"
+    return str(data).lower() == "true"
 
 
 def list_env(env_name, default=None):

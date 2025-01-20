@@ -52,11 +52,11 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
                 content=content.get("message", ""),
             )
 
-            await self.send_message(self.chat_group_name, message)
+            await self.send_message(message)
 
-    async def send_message(self, chat_group_name, message):
+    async def send_message(self, message):
         await self.channel_layer.group_send(
-            chat_group_name,
+            self.chat_group_name,
             self.message_to_json(message),
         )
 
