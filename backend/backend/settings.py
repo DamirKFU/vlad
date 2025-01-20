@@ -5,7 +5,7 @@ import dotenv
 import urllib3
 
 
-def is_true_env(env_name, default=False):
+def is_true_env(env_name, default="False"):
     data = os.environ.get(env_name, default)
     if data is None:
         raise ValueError(f"Environment variable {env_name} is not set")
