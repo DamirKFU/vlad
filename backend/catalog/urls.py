@@ -25,7 +25,7 @@ urlpatterns = [
         name="products",
     ),
     django.urls.path(
-        "product/<int:pk>/",
+        "products/<int:pk>/",
         catalog.views.ProductDetailView.as_view(),
         name="product-detail",
     ),

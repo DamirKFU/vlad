@@ -18,8 +18,12 @@ function StaffChats() {
         try {
             setLoading(true);
             setError(null);
-            const response = await api.get(`staff/support/chats/${activeTab}/`);
-            setChats(response.data.data);
+            const response = await api.get(`staff/support/chats/`, {
+                params: {
+                    chat_type: activeTab
+                }
+            });
+            setChats(response.data.data.chats);
         } catch (error) {
             setError(error.response?.data?.message || 'Ошибка при загрузке чатов');
         } finally {
@@ -39,9 +43,7 @@ function StaffChats() {
     const joinChat = async (chatId) => {
         try {
             setLoading(true);
-            await api.post(`staff/support/chats/unassigned/`, {
-                chat_id: chatId
-            });
+            await api.get(`staff/support/chats/${chatId}/invite/`);
             navigate(`/support/${chatId}`);
         } catch (error) {
             setError(error.response?.data?.message || 'Ошибка при присоединении к чату');

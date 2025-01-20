@@ -58,10 +58,9 @@ class TestCreateOrderTask(django.test.TransactionTestCase):
         }
         super().setUpClass()
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         users.models.User.objects.all().delete()
-        super().tearDownClass()
+        super().tearDown()
 
     def test_concurrent_order_creation(self):
         result = catalog.tasks.create_order_task_sync(

@@ -9,11 +9,13 @@ class Role(django.db.models.TextChoices):
     DESIGNER = "designer", "Дизайнер"
     EMBROIDERER = "embroiderer", "Вышивальщик"
     CURIER = "courier", "Курьер"
+    DEVELOPER = "developer", "Разработчик"
 
 
 class UserRole(django.db.models.Model):
     role = django.db.models.CharField(
         max_length=32,
+        unique=True,
         choices=Role.choices,
     )
 

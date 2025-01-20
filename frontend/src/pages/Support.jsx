@@ -68,7 +68,7 @@ function Support() {
 
     const addUser = async (userId) => {
         try {
-            await api.post(`staff/support/chats/${chatId}/add_responsible/`, {
+            await api.post(`staff/support/chats/${chatId}/invite/`, {
                 user_id: userId
             });
             setShowUserSearch(false);

@@ -9,7 +9,7 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.chat_id = self.scope["url_route"]["kwargs"]["chat_id"]
         self.user = self.scope["user"]
-        self.chat_group_name = f"chat_{self.chat_id}"
+        self.chat_group_name = self.get_chat_group_name(self.chat_id)
 
         try:
             self.chat = await self.get_chat()
@@ -32,6 +32,10 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
                 self.chat_group_name, self.channel_name
             )
 
+    @staticmethod
+    def get_chat_group_name(chat_id):
+        return f"chat_{chat_id}"
+
     async def receive_json(self, content):
         message_type = content.get("type")
 
@@ -42,50 +46,42 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
                 )
                 return
 
-            message = await self.save_message(content.get("message", ""))
-
-            await self.channel_layer.group_send(
-                self.chat_group_name,
-                {
-                    "type": "chat_message",
-                    "message": {
-                        "id": message.id,
-                        "content": message.content,
-                        "user_id": message.user.id,
-                        "username": message.user.username,
-                        "created_at": message.created_at.isoformat(),
-                        "chat_id": self.chat_id,
-                    },
-                },
+            message = await self.save_message(
+                chat_id=self.chat_id,
+                user=self.user,
+                content=content.get("message", ""),
             )
 
-            other_user = (
-                self.chat.user
-                if self.user.is_staff
-                else await self.get_staff_user()
-            )
-            if other_user:
-                await self.channel_layer.group_send(
-                    f"user_{other_user.id}_chats",
-                    {
-                        "type": "new_message",
-                        "message": {
-                            "chat_id": self.chat_id,
-                            "content": message.content,
-                            "user_id": message.user.id,
-                            "username": message.user.username,
-                            "created_at": message.created_at.isoformat(),
-                        },
-                    },
-                )
+            await self.send_message(self.chat_group_name, message)
+
+    async def send_message(self, chat_group_name, message):
+        await self.channel_layer.group_send(
+            chat_group_name,
+            self.message_to_json(message),
+        )
+
+    @staticmethod
+    def message_to_json(message):
+        return {
+            "type": "chat_message",
+            "message": {
+                "id": message.id,
+                "content": message.content,
+                "user_id": message.user.id,
+                "username": message.user.username,
+                "created_at": message.created_at.isoformat(),
+                "chat_id": message.chat_id,
+                "is_system": message.is_system,
+            },
+        }
 
     async def chat_message(self, event):
         await self.send_json(event)
 
     async def get_chat(self):
-        return await support.models.Chat.objects.select_related("user").aget(
-            id=self.chat_id,
-        )
+        return await support.models.Chat.objects.select_related(
+            support.models.Chat.user.field.name
+        ).aget(id=self.chat_id)
 
     async def can_access_chat(self):
         user = self.user
@@ -98,17 +94,15 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
         ).aexists()
         return is_author or is_responsible
 
-    async def save_message(self, content):
-        return await support.models.Message.objects.acreate(
-            chat_id=self.chat_id, user=self.scope["user"], content=content
-        )
+    async def save_message(self, **kwargs):
+        return await support.models.Message.objects.acreate(**kwargs)
 
     async def get_chat_history(self):
         messages = []
         async for message in (
             support.models.Message.objects.filter(chat_id=self.chat_id)
-            .select_related("user")
-            .order_by("-created_at")[:50]
+            .select_related(support.models.Message.user.field.name)
+            .order_by(f"-{support.models.Message.created_at.field.name}")[:50]
         ):
             messages.append(message)
 

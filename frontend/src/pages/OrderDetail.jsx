@@ -4,6 +4,7 @@ import api from '../api';
 import '../styles/OrderDetail.css';
 import Preloader from '../components/common/Preloader';
 import ErrorMessage from '../components/common/ErrorMessage';
+import { API_URL } from '../constants/core';
 
 const OrderDetail = () => {
     const { orderId } = useParams();
@@ -31,17 +32,17 @@ const OrderDetail = () => {
     if (!order) return <ErrorMessage message="Заказ не найден" />;
 
     return (
-        <div className="checkout-container">
+        <div className="order-detail-container">
             <h1>Заказ #{order.id}</h1>
             
-            <div className="checkout-items">
+            <div className="order-items">
                 {order.items.map(item => (
-                    <div key={item.id} className="checkout-item">
+                    <div key={item.id} className="order-item">
                         <div className="item-image">
-                            {item.image ? (
+                            {item.product.image ? (
                                 <img 
-                                    src={item.image} 
-                                    alt={item.name}
+                                    src={`${API_URL}${item.product.image}`} 
+                                    alt={item.product.name}
                                     onError={(e) => {
                                         e.target.onerror = null;
                                         e.target.src = '/placeholder.jpg';
@@ -54,11 +55,11 @@ const OrderDetail = () => {
                             )}
                         </div>
                         <div className="item-info">
-                            <h3>{item.name}</h3>
+                            <h3>{item.product.name}</h3>
                             <div className="item-details">
-                                <span>{item.category}</span>
-                                <span className="color-dot" style={{ backgroundColor: item.color }}></span>
-                                <span>{item.size}</span>
+                                <span>{item.garment.category.name}</span>
+                                <span className="color-dot" style={{ backgroundColor: item.garment.color.hex }}></span>
+                                <span>{item.garment.size}</span>
                                 <span>×{item.quantity}</span>
                             </div>
                             <div className="item-price">
@@ -71,8 +72,8 @@ const OrderDetail = () => {
 
             <div className="delivery-section">
                 <h2>Статус заказа</h2>
-                <div className={`order-status status-${order.status}`}>
-                    {order.status_display}
+                <div className={`order-status status-${order.status.status}`}>
+                    {order.status.status_display}
                 </div>
                 <div className={`payment-status payment-status-${order.payment_status}`}>
                     {order.payment_status_display}
@@ -98,7 +99,7 @@ const OrderDetail = () => {
                     <h2>Итого к оплате:</h2>
                     <span className="total-price">{order.total_sum} ₽</span>
                 </div>
-                {order.status === 'WP' && order.confirmation_url && (
+                {order.status.status === 'WP' && order.confirmation_url && (
                     <a 
                         href={order.confirmation_url}
                         className="pay-order-btn"

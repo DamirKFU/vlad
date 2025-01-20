@@ -6,23 +6,13 @@ app_name = "staff"
 
 urlpatterns = [
     django.urls.path(
-        "orders/",
-        staff.views.StaffOrderListView.as_view(),
-        name="orders",
-    ),
-    django.urls.path(
-        "orders/<int:order_id>/",
-        staff.views.StaffOrderDetailView.as_view(),
-        name="order-detail",
-    ),
-    django.urls.path(
-        "orders/<int:order_id>/logs/",
-        staff.views.OrderLogListView.as_view(),
-        name="order-logs",
-    ),
-    django.urls.path(
-        "support/chats/<str:chat_type>/",
+        "support/chats/",
         staff.views.StaffChatListView.as_view(),
         name="staff_chats",
+    ),
+    django.urls.path(
+        "support/chats/<int:pk>/invite/",
+        staff.views.StaffChatInviteView.as_view(),
+        name="staff_chat_invite",
     ),
 ]

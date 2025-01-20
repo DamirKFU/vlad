@@ -46,6 +46,10 @@ class YooKassaWebhookTest(django.test.TestCase):
             phone="+79991234567",
         )
 
+    def tearDown(self):
+        users.models.User.objects.all().delete()
+        super().tearDown()
+
     def test_payment_succeeded(self):
         webhook_data = {
             "type": "notification",

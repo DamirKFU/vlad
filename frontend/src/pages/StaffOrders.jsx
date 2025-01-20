@@ -87,8 +87,8 @@ const StaffOrders = () => {
                         onClick={() => handleOrderClick(order.id)}
                     >
                         <div className="order-title">Заказ №{order.id}</div>
-                        <div className={`order-status ${getStatusInfo(order.status).className}`}>
-                            {order.status_display}
+                        <div className={`order-status ${getStatusInfo(order.status.status).className}`}>
+                            {order.status.status_display}
                         </div>
                     </div>
                 ))}

@@ -23,6 +23,16 @@ def get_allowed_statuses(user):
             catalog.models.OrderStatus.DRAFT,
         ]
 
+    if users.models.Role.DEVELOPER in user_roles:
+        return [
+            catalog.models.OrderStatus.PAID,
+            catalog.models.OrderStatus.IN_WORK,
+            catalog.models.OrderStatus.DRAFT,
+            catalog.models.OrderStatus.IN_DELIVERY,
+            catalog.models.OrderStatus.DELIVERED,
+            catalog.models.OrderStatus.CANCELED,
+        ]
+
     allowed_statuses = []
     if users.models.Role.DESIGNER in user_roles:
         allowed_statuses.append(catalog.models.OrderStatus.PAID)
@@ -34,6 +44,13 @@ def get_allowed_statuses(user):
         allowed_statuses.append(catalog.models.OrderStatus.DRAFT)
 
     return allowed_statuses
+
+
+def get_allowed_chats(user):
+    if user.is_superuser:
+        return ["my", "unassigned", "assigned"]
+
+    return ["my", "unassigned"]
 
 
 def handle_status_change(order, new_status, user, error_comment=None):

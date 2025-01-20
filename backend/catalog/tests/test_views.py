@@ -364,6 +364,11 @@ class AddToCartViewTests(django.test.TestCase):
         cls.authorized_client = rest_framework.test.APIClient()
         cls.authorized_client.force_authenticate(user=cls.user)
 
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
     def test_add_to_cart_view(self):
         response = self.authorized_client.post(
             django.urls.reverse("api:catalog:cart-add"),

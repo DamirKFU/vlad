@@ -10,7 +10,7 @@ import support.serializers
 
 class CreateChatView(rest_framework.views.APIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
-    serializer_class = support.serializers.ChatSerializer
+    serializer_class = support.serializers.ChatCreateSerializer
 
     @django.db.transaction.atomic
     def post(self, request):
@@ -36,12 +36,7 @@ class ChatListView(rest_framework.generics.ListAPIView):
         return support.models.Chat.objects.filter(user_id=self.request.user.id)
 
     def get(self, request, *args, **kwargs):
-        try:
-            data = super().get(request, *args, **kwargs).data
-        except Exception:
-            return core.utils.error_response(
-                message="Ошибка получения чатов",
-            )
+        data = super().get(request, *args, **kwargs).data
 
         return core.utils.success_response(
             message="Чаты",

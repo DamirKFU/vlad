@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { validateRussianPhone, formatPhoneNumber } from '../utils/validators';
+import { API_URL } from '../constants/core';
 import '../styles/Checkout.css';
+import '../styles/bootstrap-5.3.3-dist/css/bootstrap.min.css';
 
 const Checkout = () => {
     const location = useLocation();
@@ -65,30 +67,16 @@ const Checkout = () => {
             return false;
 
         } catch (err) {
-            if (err.response?.status === 404) {
-                setError('Не удалось создать заказ: задача не найдена');
-                setLoading(false);
-                return true;
-            }
-            // Добавляем обработку 400 статуса
-            if (err.response?.status === 400) {
-                const { errors, message } = err.response.data;
-                if (errors?.form_error) {
-                    setError(errors.form_error);
-                } else if (errors) {
-                    if (errors.address) {
-                        setAddressError(errors.address[0]);
-                    }
-                    if (errors.phone) {
-                        setPhoneError(errors.phone[0]);
-                    }
-                } else {
-                    setError(message || 'Ошибка валидации');
+            if (err.response) {
+                // Проверяем статус ответа
+                if (err.response.status >= 400 && err.response.status < 500) {
+                    setError(err.response.data.message || 'Ошибка при проверке статуса заказа');
+                } else if (err.response.status === 404) {
+                    setError('Не удалось создать заказ: задача не найдена');
                 }
-                setLoading(false);
-                return true;
             }
-            return false;
+            setLoading(false);
+            return true;
         }
     };
 
@@ -129,9 +117,13 @@ const Checkout = () => {
         setError(null);
 
         try {
-            const response = await api.post('catalog/order/create/', {
+            const response = await api.post('catalog/orders/', {
                 address: address.trim(),
-                phone: phone.trim()
+                phone: phone.trim(),
+                items: cartItems.map(item => ({
+                    id: item.id,
+                    quantity: item.quantity
+                }))
             });
             
             const taskId = response.data.data.task_id;
@@ -168,10 +160,10 @@ const Checkout = () => {
                 {cartItems.map(item => (
                     <div key={item.id} className="checkout-item">
                         <div className="item-image">
-                            {item.image ? (
+                            {item.product.image ? (
                                 <img 
-                                    src={item.image} 
-                                    alt={item.name}
+                                    src={`${API_URL}${item.product.image}`} 
+                                    alt={item.product.name}
                                     onError={(e) => {
                                         e.target.onerror = null;
                                         e.target.src = '/placeholder.jpg';
@@ -184,11 +176,11 @@ const Checkout = () => {
                             )}
                         </div>
                         <div className="item-info">
-                            <h3>{item.name}</h3>
+                            <h3>{item.product.name}</h3>
                             <div className="item-details">
-                                <span>{item.category}</span>
-                                <span className="color-dot" style={{ backgroundColor: item.color }}></span>
-                                <span>{item.size}</span>
+                                <span>{item.garment.category.name}</span>
+                                <span className="color-dot" style={{ backgroundColor: item.garment.color.hex }}></span>
+                                <span>{item.garment.size}</span>
                                 <span>×{item.quantity}</span>
                             </div>
                             <div className="item-price">

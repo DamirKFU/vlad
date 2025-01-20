@@ -17,6 +17,10 @@ class AuthTestCase(django.test.TestCase):
             password="TestPass123",
         )
 
+    def tearDown(self):
+        users.models.User.objects.all().delete()
+        super().tearDown()
+
     @parameterized.parameterized.expand(
         [
             (
@@ -205,6 +209,10 @@ class AuthTestCaseAdditional(django.test.TestCase):
     def setUp(self):
         self.register_url = django.urls.reverse("api:users:register")
 
+    def tearDown(self):
+        users.models.User.objects.all().delete()
+        super().tearDown()
+
     def test_duplicate_username_registration(self):
         first_user_data = {
             "username": "testuser",
@@ -292,7 +300,8 @@ class PasswordResetTestCase(django.test.TestCase):
 
     def tearDown(self):
         django.core.mail.outbox = []
-        self.user.delete()
+        users.models.User.objects.all().delete()
+        super().tearDown()
 
     def test_password_reset_request_valid_email(self):
         response = self.client.post(
@@ -412,6 +421,10 @@ class LogoutViewTest(django.test.TestCase):
         self.client = rest_framework.test.APIClient()
         self.logout_url = django.urls.reverse("api:users:logout")
 
+    def tearDown(self):
+        users.models.User.objects.all().delete()
+        super().tearDown()
+
     def test_logout_success(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.post(self.logout_url)
@@ -445,6 +458,10 @@ class IsAuthViewTest(django.test.TestCase):
         )
         self.client = rest_framework.test.APIClient()
         self.is_auth_url = django.urls.reverse("api:users:is_auth")
+
+    def tearDown(self):
+        users.models.User.objects.all().delete()
+        super().tearDown()
 
     def test_is_auth_success(self):
         self.client.force_authenticate(user=self.user)

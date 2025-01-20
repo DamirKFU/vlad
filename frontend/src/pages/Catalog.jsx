@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
+import { API_URL } from '../constants/core'; // Импортируем API_URL
 import '../styles/Catalog.css';
 import Preloader from '../components/common/Preloader';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -43,7 +44,7 @@ const Catalog = () => {
   // Если данных нет
   if (!products || products.length === 0) {
     return (
-      <div className="catalog-empty">
+      <div className="catalog-empty text-center">
         <h2>Товары не найдены</h2>
         <p>В данный момент каталог пуст</p>
       </div>
@@ -51,8 +52,8 @@ const Catalog = () => {
   }
 
   return (
-    <div className="catalog">
-      <div className="catalog-header">
+    <div className="container catalog">
+      <div className="catalog-header text-center mb-4">
         <h1>Футболки</h1>
         <p className="catalog-description">
           Наши футболки различаются по плотности, от 140 г до 300 г. 
@@ -65,51 +66,54 @@ const Catalog = () => {
         </div>
       </div>
 
-      <div className="catalog-filters">
-        <button className="filter-btn">Промо</button>
-        <button className="filter-btn">Стандарт</button>
-        <button className="filter-btn">Плотные</button>
-        <button className="filter-btn">Премиум</button>
-        <button className="filter-btn">С экстастаном</button>
-        <button className="filter-btn">Кршены</button>
-        <button className="filter-btn">Поло</button>
+      <div className="catalog-filters mb-4">
+        <button className="btn btn-outline-primary me-2">Промо</button>
+        <button className="btn btn-outline-primary me-2">Стандарт</button>
+        <button className="btn btn-outline-primary me-2">Плотные</button>
+        <button className="btn btn-outline-primary me-2">Премиум</button>
+        <button className="btn btn-outline-primary me-2">С экстрастоном</button>
+        <button className="btn btn-outline-primary me-2">Крашеные</button>
+        <button className="btn btn-outline-primary">Поло</button>
       </div>
 
-      <div className="catalog-grid">
+      <div className="row">
         {products.map(product => (
-          <div key={product.id} className="product-card">
-            <div className="product-image">
-              {product.image ? (
-                <img 
-                  src={product.image} 
-                  alt={product.name}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = '/placeholder.jpg';
-                  }}
-                />
-              ) : (
-                <div className="product-image-placeholder">
-                  Нет изображения
-                </div>
-              )}
-            </div>
-            <div className="product-info">
-              <h3 className="product-title">{product.name}</h3>
-              <p className="product-price">{product.price} руб</p>
-              <Link to={`/product/${product.id}`} className="add-to-cart-btn">
-                Подробнее
-              </Link>
+          <div key={product.id} className="col-md-4 mb-4">
+            <div className="card product-card">
+              <div className="product-image">
+                {product.image ? (
+                  <img 
+                    src={`${API_URL}${product.image}`} // Используем API_URL
+                    alt={product.name}
+                    className="card-img-top"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '/placeholder.jpg';
+                    }}
+                  />
+                ) : (
+                  <div className="product-image-placeholder card-img-top">
+                    Нет изображения
+                  </div>
+                )}
+              </div>
+              <div className="card-body">
+                <h3 className="product-title">{product.name}</h3>
+                <p className="product-price">{product.price} руб</p>
+                <Link to={`/product/${product.id}`} className="btn btn-primary">
+                  Подробнее
+                </Link>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {hasMore && (
-        <div className="load-more">
+        <div className="text-center">
           <button 
             onClick={() => setPage(prev => prev + 1)} 
-            className="load-more-btn"
+            className="btn btn-outline-primary"
             disabled={loading}
           >
             {loading ? 'Загрузка...' : 'Загрузить еще'}

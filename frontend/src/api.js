@@ -1,9 +1,10 @@
 import axios from "axios";
 import Cookies from 'js-cookie';
+import { API_URL } from './constants/core';
 
 
 const api = axios.create({
-    baseURL: "http://localhost:8000/api/",
+    baseURL: `${API_URL}/api/`,
     withCredentials: true
 });
 
@@ -12,7 +13,7 @@ api.interceptors.request.use(
         const csrf_token = Cookies.get('csrftoken');
         if (!csrf_token) {
             try {
-                await axios.get('http://localhost:8000/api/get-csrf-token/', { withCredentials: true });
+                await axios.get(`${API_URL}/api/get-csrf-token/`, { withCredentials: true });
                 config.headers['X-CSRFToken'] = Cookies.get('csrftoken');
             } catch (error) {
                 return Promise.reject(error);
@@ -27,15 +28,5 @@ api.interceptors.request.use(
     }
 );
 
-api.interceptors.response.use(
-    response => response,
-    error => {
-        if (error.response && error.response.status === 403) {
-            // Перенаправление на страницу логина
-            window.location.href = '/login'; // Замените '/login' на ваш путь к странице логина
-        }
-        return Promise.reject(error);
-    }
-);
 
 export default api;

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import '../styles/OrderHistory.css';
+import '../styles/bootstrap-5.3.3-dist/css/bootstrap.min.css';
 import Preloader from '../components/common/Preloader';
 import ErrorMessage from '../components/common/ErrorMessage';
+import { API_URL } from '../constants/core';
 
 const OrderHistory = () => {
     const [orders, setOrders] = useState([]);
@@ -15,7 +18,7 @@ const OrderHistory = () => {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const response = await api.get(`catalog/orders/history/?page=${page}`);
+                const response = await api.get(`catalog/orders/?page=${page}`);
                 setOrders(prev => [...prev, ...response.data.data.results]);
                 setTotalCount(response.data.data.count);
                 setHasMore(!!response.data.data.next);
@@ -31,11 +34,8 @@ const OrderHistory = () => {
 
     const handleCancelOrder = async (orderId) => {
         try {
-            const response = await api.post('catalog/orders/history/', {
-                order_id: orderId
-            });
-            
-            if (response.status === 200) {
+            const response = await api.delete(`catalog/orders/${orderId}/`);
+            if (response.status === 204) {
                 // Обновляем состояние заказа локально
                 setOrders(prevOrders => 
                     prevOrders.map(order => 
@@ -73,19 +73,18 @@ const OrderHistory = () => {
                             <div key={order.id} className="order-card">
                                 <div className="order-header">
                                     <div className="order-info">
-                                        <h2>Заказ №{order.id}</h2>
+                                        <h2>
+                                            <Link to={`/orders/${order.id}`}>Заказ №{order.id}</Link>
+                                        </h2>
                                         <p className="order-date">
                                             {new Date(order.created_at).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div className="order-status">
-                                        <span className={`status-badge status-${order.status}`}>
-                                            {order.status_display}
+                                        <span className={`status-badge status-${order.status.status}`}>
+                                            {order.status.status_display}
                                         </span>
-                                        <span className={`status-badge payment-status-${order.payment_status}`}>
-                                            {order.payment_status_display}
-                                        </span>
-                                        {order.status === 'WP' && (
+                                        {order.status.status === 'WP' && (
                                             <button 
                                                 className="cancel-order-btn"
                                                 onClick={() => handleCancelOrder(order.id)}
@@ -105,20 +104,20 @@ const OrderHistory = () => {
                                     {order.items.map(item => (
                                         <div key={item.id} className="order-item">
                                             <div className="item-image">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} />
+                                                {item.product.image ? (
+                                                    <img src={`${API_URL}${item.product.image}`} alt={item.product.name} />
                                                 ) : (
                                                     <div className="no-image">Нет фото</div>
                                                 )}
                                             </div>
                                             <div className="item-details">
-                                                <h3>{item.name}</h3>
+                                                <h3>{item.product.name}</h3>
                                                 <div className="item-specs">
-                                                    <span className="spec-tag">{item.size}</span>
-                                                    <span className="spec-tag category-tag">{item.category}</span>
+                                                    <span className="spec-tag">{item.garment.size}</span>
+                                                    <span className="spec-tag category-tag">{item.garment.category.name}</span>
                                                     <span 
                                                         className="color-tag" 
-                                                        style={{ backgroundColor: item.color }}
+                                                        style={{ backgroundColor: item.garment.color.hex }}
                                                     />
                                                 </div>
                                                 <div className="item-price-details">
