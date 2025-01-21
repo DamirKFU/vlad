@@ -93,7 +93,7 @@ class GarmentListViewTests(django.test.TestCase):
                 },
                 "color": {
                     "name": self.color.name,
-                    "hex": self.color.color,
+                    "color": self.color.color,
                     "id": self.color.id,
                 },
                 "size": "M",
@@ -328,7 +328,7 @@ class ProductDetailViewTests(django.test.TestCase):
                         "color": {
                             "id": self.color.id,
                             "name": self.color.name,
-                            "hex": self.color.color,
+                            "color": self.color.color,
                         },
                     }
                 ],
@@ -536,7 +536,7 @@ class CartViewTests(django.test.TestCase):
             "color": {
                 "id": self.color.id,
                 "name": self.color.name,
-                "hex": self.color.color,
+                "color": self.color.color,
             },
         }
         expected_product = {
@@ -775,7 +775,7 @@ class OrderHistoryViewTests(django.test.TestCase):
                     "color": {
                         "id": self.color.id,
                         "name": self.color.name,
-                        "hex": self.color.color,
+                        "color": self.color.color,
                     },
                 },
                 "quantity": order_item.quantity,
@@ -884,7 +884,7 @@ class OrderDetailViewTests(django.test.TestCase):
                     "color": {
                         "id": self.color.id,
                         "name": self.color.name,
-                        "hex": self.color.color,
+                        "color": self.color.color,
                     },
                 },
                 "quantity": self.order_item.quantity,

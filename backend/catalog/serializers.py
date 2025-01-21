@@ -31,15 +31,15 @@ class GarmentSerializer(rest_framework.serializers.ModelSerializer):
 
     def get_category(self, obj):
         return {
-            "name": obj.category.name,
-            "id": obj.category.id,
+            catalog.models.Category.name.field.name: obj.category.name,
+            catalog.models.Category.id.field.name: obj.category.id,
         }
 
     def get_color(self, obj):
         return {
-            "name": obj.color.name,
-            "hex": obj.color.color,
-            "id": obj.color.id,
+            catalog.models.Color.name.field.name: obj.color.name,
+            catalog.models.Color.color.field.name: obj.color.color,
+            catalog.models.Color.id.field.name: obj.color.id,
         }
 
 
@@ -135,14 +135,14 @@ class ProductAdditionalImageSerializer(
 
     def get_category(self, obj):
         return {
-            "id": obj.category.id,
-            "name": obj.category.name,
+            catalog.models.Category.id.field.name: obj.category.id,
+            catalog.models.Category.name.field.name: obj.category.name,
         }
 
     def get_color(self, obj):
         return {
-            "id": obj.color.id,
-            "name": obj.color.name,
+            catalog.models.Color.id.field.name: obj.color.id,
+            catalog.models.Color.name.field.name: obj.color.name,
         }
 
 
