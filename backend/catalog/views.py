@@ -2,6 +2,7 @@ import celery_once
 import django.core.exceptions
 import django.db
 import django.shortcuts
+import django_filters.rest_framework
 import rest_framework.decorators
 import rest_framework.generics
 import rest_framework.pagination
@@ -11,6 +12,7 @@ import rest_framework.status as status
 import rest_framework.views
 import rest_framework.viewsets
 
+import catalog.filters
 import catalog.models
 import catalog.pagination
 import catalog.serializers
@@ -23,6 +25,8 @@ class GarmentListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     serializer_class = catalog.serializers.GarmentSerializer
     queryset = catalog.models.Garment.objects.all_items()
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_class = catalog.filters.GarmentFilter
 
     def get(self, request, *args, **kwargs):
         return core.utils.success_response(
@@ -57,11 +61,14 @@ class ConstructorProductCreateView(rest_framework.views.APIView):
 class ProductListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     serializer_class = catalog.serializers.ProductSerializer
-    queryset = catalog.models.Product.objects.all()
     pagination_class = catalog.pagination.ProductPagination
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_class = catalog.filters.ProductFilter
 
     def get_queryset(self):
-        return super().get_queryset()
+        return catalog.models.Product.objects.get_filter_product_list(
+            self.request.query_params
+        )
 
     def get(self, request, *args, **kwargs):
         responce = super().get(request, *args, **kwargs)
@@ -177,6 +184,8 @@ class UpdateCartItemView(rest_framework.generics.GenericAPIView):
 class OrderHistoryView(rest_framework.generics.ListAPIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
     pagination_class = catalog.pagination.OrderPagination
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_class = catalog.filters.OrderFilter
 
     def get_queryset(self):
         return catalog.models.Order.objects.get_orders_with_items(
@@ -190,14 +199,10 @@ class OrderHistoryView(rest_framework.generics.ListAPIView):
         return catalog.serializers.OrderSerializer
 
     def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(
-            page, many=True, context={"request": request}
-        )
+        responce = super().get(request, *args, **kwargs)
 
         return core.utils.success_response(
-            data=self.get_paginated_response(serializer.data).data,
+            data=responce.data,
             message="Заказы успешно получены",
         )
 

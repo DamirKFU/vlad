@@ -119,7 +119,6 @@ class GarmentManager(django.db.models.Manager):
         queryset = (
             super()
             .get_queryset()
-            .filter(count__gt=0)
             .select_related(
                 Garment.category.field.name,
                 Garment.color.field.name,
@@ -310,6 +309,23 @@ class ProductManager(django.db.models.Manager):
             )
             .first()
         )
+
+    def get_filter_product_list(self, qury_params):
+        base_queryset = self.get_queryset().select_related(
+            Product.image.related.name,
+        )
+        garment_trigers = [
+            Garment.category.field.name,
+            Garment.color.field.name,
+            Garment.size.field.name,
+            Garment.count.field.name,
+        ]
+        if any(
+            garment_triger in qury_params for garment_triger in garment_trigers
+        ):
+            return base_queryset.distinct()
+
+        return base_queryset
 
 
 class Product(AbstractModel):

@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 
 import dotenv
 import urllib3
@@ -31,6 +32,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = is_true_env("DEBUG")
 
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
+
 DEFAULT_VERIFED_EMAIL = is_true_env("DEFAULT_VERIFED_EMAIL")
 
 ALLOWED_HOSTS = list_env("ALLOWED_HOSTS")
@@ -48,6 +51,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "sorl.thumbnail",
+    "django_filters",
     "channels",
     "django_elasticsearch_dsl",
     "django_cleanup.apps.CleanupConfig",
@@ -134,6 +138,18 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend"
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/minute",
+        "user": "20/minute",
+    },
+    "EXCEPTION_HANDLER": "backend.exception_handlers.custom_exception_handler",
 }
 
 CORS_ALLOW_CREDENTIALS = True
@@ -142,6 +158,12 @@ if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
     INTERNAL_IPS = os.getenv("DJANGO_INTERNAL_IPS", "127.0.0.1").split(",")
+    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}
+
+if TESTING:
+    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}
 
 
 CSRF_COOKIE_SECURE = is_true_env("CSRF_COOKIE_SECURE", default=False)
@@ -285,4 +307,11 @@ CHANNEL_LAYERS = {
             "symmetric_encryption_keys": [SECRET_KEY],
         },
     },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.getenv("REDIS_CACHE_URL", "redis://localhost:6379/1"),
+    }
 }

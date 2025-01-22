@@ -2,6 +2,7 @@ import django.conf
 import django.contrib.auth
 import django.core.signing
 import django.utils.timezone
+import elasticsearch_dsl
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.status
@@ -147,22 +148,20 @@ class UserSearchView(rest_framework.views.APIView):
 
         query = query.lower()
         search = users.documents.UserDocument.search().query(
-            "bool",
-            should=[
-                {"match": {"username": {"query": query, "boost": 3}}},
-                {
-                    "fuzzy": {
-                        "username": {
-                            "value": query,
-                            "fuzziness": "AUTO",
-                            "prefix_length": 2,
-                        }
-                    }
-                },
-                {"prefix": {"username": {"value": query, "boost": 2}}},
-                {"wildcard": {"username": f"*{query}*"}},
-            ],
-            minimum_should_match=1,
+            elasticsearch_dsl.Q(
+                "bool",
+                should=[
+                    elasticsearch_dsl.Q(
+                        "match",
+                        username={
+                            "query": query,
+                            "fuzziness": 2,
+                        },
+                    ),
+                    elasticsearch_dsl.Q("fuzzy", username=query),
+                    elasticsearch_dsl.Q("wildcard", username=f"*{query}*"),
+                ],
+            )
         )[:3]
 
         response = search.execute()

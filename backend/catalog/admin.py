@@ -1,4 +1,4 @@
-import django.contrib
+import django.contrib.admin
 import sorl.thumbnail.admin
 
 import catalog.models
@@ -64,7 +64,7 @@ class ColorAdmin(django.contrib.admin.ModelAdmin):
 
 
 @django.contrib.admin.register(catalog.models.Garment)
-class TShirtAdmin(django.contrib.admin.ModelAdmin):
+class GarmentAdmin(django.contrib.admin.ModelAdmin):
     list_display = (
         catalog.models.Garment.id.field.name,
         catalog.models.Garment.category.field.name,
@@ -73,6 +73,14 @@ class TShirtAdmin(django.contrib.admin.ModelAdmin):
         catalog.models.Garment.count.field.name,
     )
     list_display_links = (catalog.models.Garment.id.field.name,)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.method == "POST":
+            qs = qs.select_for_update()
+            return qs
+
+        return qs
 
 
 @django.contrib.admin.register(catalog.models.ConstructorProduct)
