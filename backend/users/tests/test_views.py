@@ -445,7 +445,7 @@ class LogoutViewTest(django.test.TestCase):
 
         self.assertEqual(
             response.status_code,
-            rest_framework.status.HTTP_403_FORBIDDEN,
+            rest_framework.status.HTTP_401_UNAUTHORIZED,
             "Неверный код ответа для неавторизованного пользователя",
         )
 
@@ -483,6 +483,6 @@ class IsAuthViewTest(django.test.TestCase):
 
         self.assertEqual(
             response.status_code,
-            rest_framework.status.HTTP_403_FORBIDDEN,
+            rest_framework.status.HTTP_401_UNAUTHORIZED,
             "Неверный код ответа для неавторизованного пользователя",
         )

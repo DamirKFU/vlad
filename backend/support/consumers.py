@@ -1,6 +1,9 @@
 import channels.generic.websocket
 import django.core.exceptions
+import django.utils.timezone
+import elasticsearch_dsl
 
+import support.documents
 import support.models
 import users.models
 
@@ -43,6 +46,32 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
             if not self.chat.is_active:
                 await self.send_json(
                     {"type": "error", "message": "Чат неактивен"}
+                )
+                return
+
+            ten_seconds_ago = (
+                django.utils.timezone.now()
+                - django.utils.timezone.timedelta(seconds=10)
+            )
+            ten_seconds_ago_iso = ten_seconds_ago.isoformat()
+
+            messages_count = (
+                support.documents.MessageDocument.search()
+                .query(
+                    "bool",
+                    filter=[
+                        elasticsearch_dsl.Q("match", user_id=self.user.id),
+                        elasticsearch_dsl.Q(
+                            "range", created_at={"gte": ten_seconds_ago_iso}
+                        ),
+                    ],
+                )
+                .count()
+            )
+
+            if messages_count > 10:
+                await self.send_json(
+                    {"type": "error", "message": "Слишком много сообщений"}
                 )
                 return
 

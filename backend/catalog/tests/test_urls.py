@@ -77,7 +77,7 @@ class StaticURLTests(django.test.TestCase):
         response = self.guest_client.get(
             django.urls.reverse("api:catalog:cart")
         )
-        self.assertEqual(response.status_code, http.HTTPStatus.FORBIDDEN)
+        self.assertEqual(response.status_code, http.HTTPStatus.UNAUTHORIZED)
 
     def test_order_url(self):
         response = self.authorized_client.get(
@@ -89,7 +89,7 @@ class StaticURLTests(django.test.TestCase):
         response = self.guest_client.get(
             django.urls.reverse("api:catalog:order-history")
         )
-        self.assertEqual(response.status_code, http.HTTPStatus.FORBIDDEN)
+        self.assertEqual(response.status_code, http.HTTPStatus.UNAUTHORIZED)
 
     def test_order_detail_url(self):
         response = self.authorized_client.get(
@@ -101,4 +101,4 @@ class StaticURLTests(django.test.TestCase):
         response = self.guest_client.get(
             django.urls.reverse("api:catalog:order-detail", kwargs={"pk": 1})
         )
-        self.assertEqual(response.status_code, http.HTTPStatus.FORBIDDEN)
+        self.assertEqual(response.status_code, http.HTTPStatus.UNAUTHORIZED)

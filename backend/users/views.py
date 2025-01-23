@@ -140,6 +140,7 @@ class PasswordResetConfirmView(rest_framework.generics.GenericAPIView):
 
 class UserSearchView(rest_framework.views.APIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
+    throttle_classes = []
 
     def get(self, request):
         query = request.query_params.get("query", "")

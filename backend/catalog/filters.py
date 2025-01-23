@@ -41,7 +41,6 @@ class ProductFilter(django_filters.rest_framework.FilterSet):
         model = catalog.models.Product
         fields = {
             catalog.models.Product.price.field.name: ["gte", "lte"],
-            "garments__category__name": ["exact"],
         }
 
 
