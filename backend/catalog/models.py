@@ -319,6 +319,7 @@ class ProductManager(django.db.models.Manager):
             Garment.color.field.name,
             Garment.size.field.name,
             Garment.count.field.name,
+            "categories",
         ]
         if any(
             garment_triger in qury_params for garment_triger in garment_trigers

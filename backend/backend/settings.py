@@ -30,7 +30,7 @@ dotenv.load_dotenv(BASE_DIR / ".env.development")
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-DEBUG = False
+DEBUG = is_true_env("DEBUG")
 
 TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 

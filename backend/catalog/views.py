@@ -21,6 +21,30 @@ import catalog.utils
 import core.utils
 
 
+class CategoryListView(rest_framework.generics.ListAPIView):
+    permission_classes = (rest_framework.permissions.AllowAny,)
+    serializer_class = catalog.serializers.CategorySerializer
+    queryset = catalog.models.Category.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        return core.utils.success_response(
+            data=super().get(request, *args, **kwargs).data,
+            message="Категории успешно получены",
+        )
+
+
+class ColorListView(rest_framework.generics.ListAPIView):
+    permission_classes = (rest_framework.permissions.AllowAny,)
+    serializer_class = catalog.serializers.ColorSerializer
+    queryset = catalog.models.Color.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        return core.utils.success_response(
+            data=super().get(request, *args, **kwargs).data,
+            message="Цвета успешно получены",
+        )
+
+
 class GarmentListView(rest_framework.generics.ListAPIView):
     permission_classes = (rest_framework.permissions.AllowAny,)
     serializer_class = catalog.serializers.GarmentSerializer

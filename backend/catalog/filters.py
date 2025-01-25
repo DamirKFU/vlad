@@ -14,6 +14,14 @@ class ProductFilter(django_filters.rest_framework.FilterSet):
         max_length=255,
         lookup_expr="exact",
     )
+    categories = django_filters.CharFilter(
+        field_name=(
+            f"{catalog.models.Product.garments.field.name}__"
+            f"{catalog.models.Garment.category.field.name}__"
+            f"{catalog.models.Category.name.field.name}"
+        ),
+        method="filter_by_categories",
+    )
     color = django_filters.CharFilter(
         field_name=(
             f"{catalog.models.Product.garments.field.name}__"
@@ -42,6 +50,14 @@ class ProductFilter(django_filters.rest_framework.FilterSet):
         fields = {
             catalog.models.Product.price.field.name: ["gte", "lte"],
         }
+
+    def filter_by_categories(self, queryset, name, value):
+        category_list = [
+            category.strip()
+            for category in value.split(",")
+            if category.strip()
+        ]
+        return queryset.filter(**{name + "__in": category_list})
 
 
 class GarmentFilter(django_filters.rest_framework.FilterSet):

@@ -14,9 +14,28 @@ ADDITIONAL_IMAGES_RELATED_QUERY_NAME = (
 )
 
 
+class CategorySerializer(rest_framework.serializers.ModelSerializer):
+    class Meta:
+        model = catalog.models.Category
+        fields = [
+            catalog.models.Category.id.field.name,
+            catalog.models.Category.name.field.name,
+        ]
+
+
+class ColorSerializer(rest_framework.serializers.ModelSerializer):
+    class Meta:
+        model = catalog.models.Color
+        fields = [
+            catalog.models.Color.id.field.name,
+            catalog.models.Color.name.field.name,
+            catalog.models.Color.color.field.name,
+        ]
+
+
 class GarmentSerializer(rest_framework.serializers.ModelSerializer):
-    category = rest_framework.serializers.SerializerMethodField()
-    color = rest_framework.serializers.SerializerMethodField()
+    category = CategorySerializer()
+    color = ColorSerializer()
 
     class Meta:
         model = catalog.models.Garment
@@ -28,19 +47,6 @@ class GarmentSerializer(rest_framework.serializers.ModelSerializer):
             catalog.models.Garment.count.field.name,
             catalog.models.Garment.price.field.name,
         ]
-
-    def get_category(self, obj):
-        return {
-            catalog.models.Category.name.field.name: obj.category.name,
-            catalog.models.Category.id.field.name: obj.category.id,
-        }
-
-    def get_color(self, obj):
-        return {
-            catalog.models.Color.name.field.name: obj.color.name,
-            catalog.models.Color.color.field.name: obj.color.color,
-            catalog.models.Color.id.field.name: obj.color.id,
-        }
 
 
 class ConstructorProductCreateSerializer(
@@ -83,14 +89,6 @@ class ConstructorProductCreateSerializer(
             )
 
         return constructor_product
-
-
-class CategorySerializer(rest_framework.serializers.ModelSerializer):
-    class Meta:
-        model = catalog.models.Category
-        fields = [
-            catalog.models.Category.id.field.name,
-        ]
 
 
 class ProductSerializer(rest_framework.serializers.ModelSerializer):

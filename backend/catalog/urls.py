@@ -15,6 +15,16 @@ urlpatterns = [
         name="garments",
     ),
     django.urls.path(
+        "categories/",
+        catalog.views.CategoryListView.as_view(),
+        name="categories",
+    ),
+    django.urls.path(
+        "colors/",
+        catalog.views.ColorListView.as_view(),
+        name="colors",
+    ),
+    django.urls.path(
         "constructor-product/create/",
         catalog.views.ConstructorProductCreateView.as_view(),
         name="constructor-product-create",
