@@ -287,7 +287,7 @@ class ProductManager(django.db.models.Manager):
         return (
             self.filter(id=product_id)
             .select_related(
-                Product.image.related.name,
+                Product.main_image.related.name,
             )
             .prefetch_related(
                 django.db.models.Prefetch(
@@ -312,7 +312,8 @@ class ProductManager(django.db.models.Manager):
 
     def get_filter_product_list(self, qury_params):
         base_queryset = self.get_queryset().select_related(
-            Product.image.related.name,
+            Product.main_image.related.name,
+            Product.secondary_image.related.name,
         )
         garment_trigers = [
             Garment.category.field.name,
@@ -367,14 +368,14 @@ class Product(AbstractModel):
         return f"Товар({self.name})"
 
 
-class ProductImage(BaseImage):
+class ProductMainImage(BaseImage):
     product = django.db.models.OneToOneField(
         Product,
         on_delete=django.db.models.CASCADE,
         verbose_name="товар",
-        help_text="товар изображения",
-        related_name="image",
-        related_query_name="image",
+        help_text="товар главное изображение",
+        related_name="main_image",
+        related_query_name="main_image",
     )
 
     def image_tmb(self):
@@ -400,6 +401,41 @@ class ProductImage(BaseImage):
     class Meta:
         verbose_name = "изображение товара"
         verbose_name_plural = "изображения товаров"
+
+
+class ProductSecondaryImage(BaseImage):
+    product = django.db.models.OneToOneField(
+        Product,
+        on_delete=django.db.models.CASCADE,
+        verbose_name="товар",
+        help_text="товар дополнительное изображение",
+        related_name="secondary_image",
+        related_query_name="secondary_image",
+    )
+
+    def image_tmb(self):
+        if self.image:
+            tag = f'<img src="{self.get_image_660x880().url}">'
+            return django.utils.safestring.mark_safe(tag)
+
+        return "изображение отсутствует"
+
+    image_tmb.short_description = "превью"
+    image_tmb.allow_tags = True
+    image_tmb.field_name = "image_tmb"
+
+    def get_image_660x880(self):
+        return sorl.thumbnail.get_thumbnail(
+            self.image,
+            "660x880",
+            upscale=False,
+            crop=False,
+            quality=100,
+        )
+
+    class Meta:
+        verbose_name = "дополнительное изображение товара"
+        verbose_name_plural = "дополнительные изображения товаров"
 
 
 class ProductAdditionalImageManager(django.db.models.Manager):
@@ -482,7 +518,7 @@ class CartManager(django.db.models.Manager):
                             CartItem.product.field.name,
                             (
                                 f"{CartItem.product.field.name}"
-                                f"__{Product.image.related.name}"
+                                f"__{Product.main_image.related.name}"
                             ),
                             CartItem.garment.field.name,
                             (
@@ -680,7 +716,7 @@ class OrderManager(django.db.models.Manager):
                         OrderItem.product.field.name,
                         (
                             f"{OrderItem.product.field.name}"
-                            f"__{Product.image.related.name}"
+                            f"__{Product.main_image.related.name}"
                         ),
                         (
                             f"{OrderItem.garment.field.name}"

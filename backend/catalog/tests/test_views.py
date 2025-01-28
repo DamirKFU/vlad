@@ -170,7 +170,8 @@ class ProductListViewTests(django.test.TestCase):
                 "id": product.id,
                 "name": product.name,
                 "price": product.price,
-                "image": None,
+                "main_image": None,
+                "secondary_image": None,
             }
         ]
         self.assertEqual(
@@ -182,7 +183,7 @@ class ProductListViewTests(django.test.TestCase):
         product = catalog.models.Product.objects.create(
             name="Test Product", price=100
         )
-        product_image = catalog.models.ProductImage.objects.create(
+        product_image = catalog.models.ProductMainImage.objects.create(
             product=product, image=self.image
         )
         response = self.authorized_client.get(
@@ -200,7 +201,8 @@ class ProductListViewTests(django.test.TestCase):
                 "id": product.id,
                 "name": product.name,
                 "price": product.price,
-                "image": product_image.get_image_660x880().url,
+                "main_image": product_image.get_image_660x880().url,
+                "secondary_image": None,
             }
         ]
         self.assertEqual(
@@ -265,7 +267,7 @@ class ProductDetailViewTests(django.test.TestCase):
                 "id": product.id,
                 "name": product.name,
                 "price": product.price,
-                "image": None,
+                "main_image": None,
                 "additional_images": [],
                 "garments": [],
             },
@@ -278,7 +280,7 @@ class ProductDetailViewTests(django.test.TestCase):
             name="Test Product", price=100
         )
         product.garments.add(self.garment)
-        product_image = catalog.models.ProductImage.objects.create(
+        product_image = catalog.models.ProductMainImage.objects.create(
             product=product, image=self.image
         )
         product_additional_image = (
@@ -301,7 +303,7 @@ class ProductDetailViewTests(django.test.TestCase):
                 "id": product.id,
                 "name": product.name,
                 "price": product.price,
-                "image": product_image.image.url,
+                "main_image": product_image.image.url,
                 "additional_images": [
                     {
                         "image": product_additional_image.image.url,
@@ -480,7 +482,7 @@ class CartViewTests(django.test.TestCase):
         cls.product = catalog.models.Product.objects.create(
             name="Test Product", price=100
         )
-        cls.product_image = catalog.models.ProductImage.objects.create(
+        cls.product_image = catalog.models.ProductMainImage.objects.create(
             product=cls.product, image=cls.image
         )
         cls.product.garments.add(cls.garment)
@@ -543,7 +545,8 @@ class CartViewTests(django.test.TestCase):
             "id": self.product.id,
             "name": self.product.name,
             "price": self.product.price,
-            "image": self.product_image.get_image_660x880().url,
+            "main_image": self.product_image.get_image_660x880().url,
+            "secondary_image": None,
         }
         self.assertEqual(
             response.json()["data"]["items"][0]["product"],
@@ -761,7 +764,8 @@ class OrderHistoryViewTests(django.test.TestCase):
                     "id": self.product.id,
                     "name": self.product.name,
                     "price": self.product.price,
-                    "image": None,
+                    "main_image": None,
+                    "secondary_image": None,
                 },
                 "garment": {
                     "id": self.garment.id,
@@ -870,7 +874,8 @@ class OrderDetailViewTests(django.test.TestCase):
                     "id": self.product.id,
                     "name": self.product.name,
                     "price": self.product.price,
-                    "image": None,
+                    "main_image": None,
+                    "secondary_image": None,
                 },
                 "garment": {
                     "id": self.garment.id,

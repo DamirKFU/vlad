@@ -92,20 +92,28 @@ class ConstructorProductCreateSerializer(
 
 
 class ProductSerializer(rest_framework.serializers.ModelSerializer):
-    image = rest_framework.serializers.SerializerMethodField()
+    main_image = rest_framework.serializers.SerializerMethodField()
+    secondary_image = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = catalog.models.Product
         fields = [
             catalog.models.Product.id.field.name,
             catalog.models.Product.name.field.name,
-            catalog.models.Product.image.related.name,
+            catalog.models.Product.main_image.related.name,
+            catalog.models.Product.secondary_image.related.name,
             catalog.models.Product.price.field.name,
         ]
 
-    def get_image(self, obj):
-        if hasattr(obj, "image") and obj.image:
-            return obj.image.get_image_660x880().url
+    def get_main_image(self, obj):
+        if hasattr(obj, "main_image") and obj.main_image:
+            return obj.main_image.get_image_660x880().url
+
+        return None
+
+    def get_secondary_image(self, obj):
+        if hasattr(obj, "secondary_image") and obj.secondary_image:
+            return obj.secondary_image.get_image_660x880().url
 
         return None
 
@@ -145,7 +153,7 @@ class ProductAdditionalImageSerializer(
 
 
 class ProductDetailSerializer(rest_framework.serializers.ModelSerializer):
-    image = rest_framework.serializers.SerializerMethodField()
+    main_image = rest_framework.serializers.SerializerMethodField()
     additional_images = ProductAdditionalImageSerializer(
         many=True, read_only=True
     )
@@ -157,14 +165,14 @@ class ProductDetailSerializer(rest_framework.serializers.ModelSerializer):
             catalog.models.Product.id.field.name,
             catalog.models.Product.name.field.name,
             catalog.models.Product.price.field.name,
-            catalog.models.Product.image.related.name,
+            catalog.models.Product.main_image.related.name,
             ADDITIONAL_IMAGES_RELATED_QUERY_NAME,
             catalog.models.Product.garments.field.name,
         ]
 
-    def get_image(self, obj):
-        if hasattr(obj, "image"):
-            return obj.image.image.url
+    def get_main_image(self, obj):
+        if hasattr(obj, "main_image"):
+            return obj.main_image.image.url
 
         return None
 

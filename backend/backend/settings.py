@@ -150,6 +150,7 @@ REST_FRAMEWORK = {
         "user": "20/minute",
     },
     "EXCEPTION_HANDLER": "backend.exception_handlers.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
 }
 
 CORS_ALLOW_CREDENTIALS = True

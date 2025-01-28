@@ -24,16 +24,30 @@ class ConstructorEmbroideryImageInline(
     model = catalog.models.ConstructorEmbroideryImage
 
 
-class ProductImageInline(
+class ProductMainImageInline(
     sorl.thumbnail.admin.AdminImageMixin,
     django.contrib.admin.TabularInline,
 ):
     fields = [
-        catalog.models.ProductImage.image.field.name,
-        catalog.models.ProductImage.image_tmb.field_name,
+        catalog.models.ProductMainImage.image.field.name,
+        catalog.models.ProductMainImage.image_tmb.field_name,
     ]
-    readonly_fields = [catalog.models.ProductImage.image_tmb.field_name]
-    model = catalog.models.ProductImage
+    readonly_fields = [catalog.models.ProductMainImage.image_tmb.field_name]
+    model = catalog.models.ProductMainImage
+
+
+class ProductSecondaryImageInline(
+    sorl.thumbnail.admin.AdminImageMixin,
+    django.contrib.admin.TabularInline,
+):
+    fields = [
+        catalog.models.ProductSecondaryImage.image.field.name,
+        catalog.models.ProductSecondaryImage.image_tmb.field_name,
+    ]
+    readonly_fields = [
+        catalog.models.ProductSecondaryImage.image_tmb.field_name
+    ]
+    model = catalog.models.ProductSecondaryImage
 
 
 class ProductAdditionalImageInline(
@@ -112,6 +126,7 @@ class ProductAdmin(django.contrib.admin.ModelAdmin):
     list_display_links = (catalog.models.Product.name.field.name,)
     filter_horizontal = (catalog.models.Product.garments.field.name,)
     inlines = [
-        ProductImageInline,
+        ProductMainImageInline,
+        ProductSecondaryImageInline,
         ProductAdditionalImageInline,
     ]

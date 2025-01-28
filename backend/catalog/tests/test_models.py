@@ -262,7 +262,7 @@ class TestProductModel(django.test.TestCase):
         product.full_clean()
         product.save()
 
-        product_image = catalog.models.ProductImage(
+        product_image = catalog.models.ProductMainImage(
             product=product,
             image=self.image,
         )
@@ -287,7 +287,7 @@ class TestProductModel(django.test.TestCase):
         product.full_clean()
         product.save()
 
-        product_image = catalog.models.ProductImage(
+        product_image = catalog.models.ProductMainImage(
             product=product,
             image=self.embroidery_jef,
         )
