@@ -4,7 +4,6 @@ import rest_framework.permissions
 import rest_framework.status
 import rest_framework.views
 
-import core.elasticsearch
 import core.utils
 import staff.documets
 import staff.pagination

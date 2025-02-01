@@ -4,56 +4,59 @@ import sorl.thumbnail.admin
 import catalog.models
 
 
-class ConstructorProductImageInline(
+class BaseImageInline(
     sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
 ):
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+class ConstructorProductImageInline(BaseImageInline):
     fields = [
         catalog.models.ConstructorProductImage.image.field.name,
         catalog.models.ConstructorProductImage.image_tmb.field_name,
     ]
     readonly_fields = [
-        catalog.models.ConstructorProductImage.image_tmb.field_name
+        catalog.models.ConstructorProductImage.image.field.name,
+        catalog.models.ConstructorProductImage.image_tmb.field_name,
     ]
     model = catalog.models.ConstructorProductImage
 
 
-class ConstructorEmbroideryImageInline(
-    sorl.thumbnail.admin.AdminImageMixin, django.contrib.admin.TabularInline
-):
+class ConstructorEmbroideryImageInline(BaseImageInline):
     fields = [catalog.models.ConstructorEmbroideryImage.image.field.name]
+    readonly_fields = [
+        catalog.models.ConstructorEmbroideryImage.image.field.name,
+    ]
     model = catalog.models.ConstructorEmbroideryImage
 
 
-class ProductMainImageInline(
-    sorl.thumbnail.admin.AdminImageMixin,
-    django.contrib.admin.TabularInline,
-):
+class ProductMainImageInline(BaseImageInline):
     fields = [
         catalog.models.ProductMainImage.image.field.name,
         catalog.models.ProductMainImage.image_tmb.field_name,
     ]
-    readonly_fields = [catalog.models.ProductMainImage.image_tmb.field_name]
+    readonly_fields = [
+        catalog.models.ProductMainImage.image_tmb.field_name,
+    ]
     model = catalog.models.ProductMainImage
 
+    def has_change_permission(self, request, obj):
+        return False
 
-class ProductSecondaryImageInline(
-    sorl.thumbnail.admin.AdminImageMixin,
-    django.contrib.admin.TabularInline,
-):
+
+class ProductSecondaryImageInline(BaseImageInline):
     fields = [
         catalog.models.ProductSecondaryImage.image.field.name,
         catalog.models.ProductSecondaryImage.image_tmb.field_name,
     ]
     readonly_fields = [
-        catalog.models.ProductSecondaryImage.image_tmb.field_name
+        catalog.models.ProductSecondaryImage.image_tmb.field_name,
     ]
     model = catalog.models.ProductSecondaryImage
 
 
-class ProductAdditionalImageInline(
-    sorl.thumbnail.admin.AdminImageMixin,
-    django.contrib.admin.TabularInline,
-):
+class ProductAdditionalImageInline(BaseImageInline):
     fields = [
         catalog.models.ProductAdditionalImage.image.field.name,
         catalog.models.ProductAdditionalImage.image_tmb.field_name,
@@ -61,7 +64,7 @@ class ProductAdditionalImageInline(
         catalog.models.ProductAdditionalImage.category.field.name,
     ]
     readonly_fields = [
-        catalog.models.ProductAdditionalImage.image_tmb.field_name
+        catalog.models.ProductAdditionalImage.image_tmb.field_name,
     ]
     model = catalog.models.ProductAdditionalImage
     extra = 1

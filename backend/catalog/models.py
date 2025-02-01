@@ -8,12 +8,8 @@ import django.utils.safestring
 import sorl.thumbnail
 
 import catalog.validators
+import core.models
 import users.models
-
-
-def get_path_image(instance, filename):
-    ext = pathlib.Path(filename).suffix
-    return f"catalog/image/{uuid.uuid4()}{ext}"
 
 
 def get_path_file(instance, filename):
@@ -34,46 +30,6 @@ class ConstructorProductStatus(django.db.models.TextChoices):
     IN_MODERATION = "IM", "На модерации"
     ACCEPTED = "AC", "Принято"
     REJECTED = "RJ", "Отказано"
-
-
-class BaseImage(django.db.models.Model):
-    image = sorl.thumbnail.ImageField(
-        "изображение",
-        upload_to=get_path_image,
-        help_text="загрузите изображение",
-        validators=[
-            django.core.validators.FileExtensionValidator(
-                ["jpg", "jpeg", "png"]
-            ),
-        ],
-    )
-
-    def get_image_300x300(self):
-        return sorl.thumbnail.get_thumbnail(
-            self.image,
-            "300x300",
-            crop="center",
-            quality=100,
-        )
-
-    def image_tmb(self):
-        if self.image:
-            tag = f'<img src="{self.get_image_300x300().url}">'
-            return django.utils.safestring.mark_safe(tag)
-
-        return "изображение отсутствует"
-
-    image_tmb.short_description = "превью"
-    image_tmb.allow_tags = True
-    image_tmb.field_name = "image_tmb"
-
-    class Meta:
-        verbose_name = "абстрактная модель изображения"
-        verbose_name_plural = "абстрактные модели изображений"
-        abstract = True
-
-    def __str__(self):
-        return pathlib.Path(self.image.path).stem
 
 
 class AbstractModel(django.db.models.Model):
@@ -237,7 +193,9 @@ class ConstructorProduct(django.db.models.Model):
         return "Товар Конструктора"
 
 
-class ConstructorProductImage(BaseImage):
+class ConstructorProductImage(core.models.BaseImage):
+    objects = core.models.BaseImageManager()
+
     product = django.db.models.OneToOneField(
         ConstructorProduct,
         on_delete=django.db.models.CASCADE,
@@ -252,7 +210,9 @@ class ConstructorProductImage(BaseImage):
         verbose_name_plural = "изображения товаров конструктора"
 
 
-class ConstructorEmbroideryImage(BaseImage):
+class ConstructorEmbroideryImage(core.models.BaseImage):
+    objects = core.models.BaseImageManager()
+
     product = django.db.models.OneToOneField(
         ConstructorProduct,
         on_delete=django.db.models.CASCADE,
@@ -368,7 +328,9 @@ class Product(AbstractModel):
         return f"Товар({self.name})"
 
 
-class ProductMainImage(BaseImage):
+class ProductMainImage(core.models.BaseImage):
+    objects = core.models.BaseImageManager()
+
     product = django.db.models.OneToOneField(
         Product,
         on_delete=django.db.models.CASCADE,
@@ -403,7 +365,9 @@ class ProductMainImage(BaseImage):
         verbose_name_plural = "изображения товаров"
 
 
-class ProductSecondaryImage(BaseImage):
+class ProductSecondaryImage(core.models.BaseImage):
+    objects = core.models.BaseImageManager()
+
     product = django.db.models.OneToOneField(
         Product,
         on_delete=django.db.models.CASCADE,
@@ -438,7 +402,7 @@ class ProductSecondaryImage(BaseImage):
         verbose_name_plural = "дополнительные изображения товаров"
 
 
-class ProductAdditionalImageManager(django.db.models.Manager):
+class ProductAdditionalImageManager(core.models.BaseImageManager):
     def get_images_for_garments(self, product):
         return (
             self.get_queryset()
@@ -451,7 +415,7 @@ class ProductAdditionalImageManager(django.db.models.Manager):
         )
 
 
-class ProductAdditionalImage(BaseImage):
+class ProductAdditionalImage(core.models.BaseImage):
     objects = ProductAdditionalImageManager()
 
     product = django.db.models.ForeignKey(
