@@ -72,13 +72,26 @@ def error_response(
 
         form_error = serializer_errors.get("form_error", [None])[0]
 
-    return rest_framework.response.Response(
-        {
-            "errors": {
-                "fields": fields,
-                "form_error": form_error,
-            },
-            "message": message,
+    response_data = {
+        "errors": {
+            "fields": fields,
+            "form_error": form_error,
         },
+        "message": message,
+    }
+
+    if user:
+        response_data["from_user"] = {
+            "is_authenticated": user.is_authenticated,
+            "user_info": {
+                "id": user.id if user.is_authenticated else None,
+                "username": user.username if user.is_authenticated else None,
+                "email": user.email if user.is_authenticated else None,
+                "is_staff": user.is_staff if user.is_authenticated else None,
+            },
+        }
+
+    return rest_framework.response.Response(
+        response_data,
         status=http_status,
     )
