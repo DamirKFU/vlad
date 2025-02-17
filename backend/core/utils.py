@@ -8,6 +8,7 @@ def success_response(
     data=None,
     message="",
     http_status=rest_framework.status.HTTP_200_OK,
+    user=None,
 ):
     if data is None:
         data = {}
@@ -26,6 +27,17 @@ def success_response(
             ],
         }
 
+    if user:
+        response_data["from_user"] = {
+            "is_authenticated": user.is_authenticated,
+            "user_info": {
+                "id": user.id if user.is_authenticated else None,
+                "username": user.username if user.is_authenticated else None,
+                "email": user.email if user.is_authenticated else None,
+                "is_staff": user.is_staff if user.is_authenticated else None,
+            },
+        }
+
     return rest_framework.response.Response(
         response_data,
         status=http_status,
@@ -38,6 +50,7 @@ def error_response(
     serializer_errors=None,
     message="",
     http_status=rest_framework.status.HTTP_400_BAD_REQUEST,
+    user=None,
 ):
     if fields and serializer_errors:
         raise ValueError(
