@@ -446,6 +446,19 @@ class AddToCartViewTests(django.test.TestCase):
         self.assertEqual(cart.items.count(), 1)
         self.assertEqual(cart.items.first().quantity, 2)
 
+    def test_not_enough_garment(self):
+        self.garment.count = 0
+        self.garment.save()
+        self.garment.refresh_from_db()
+        response = self.authorized_client.post(
+            django.urls.reverse("api:catalog:cart-add"),
+            data={
+                "id_product": self.product.id,
+                "id_garment": self.garment.id,
+            },
+        )
+        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+
 
 @django.test.override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
 class CartViewTests(django.test.TestCase):

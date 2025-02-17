@@ -231,22 +231,31 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
                 {"form_error": "Данная одежда не принадлежит этому товару"}
             )
 
-        data["product"] = product
-        data["garment"] = garment
-        return data
-
-    def create(self, validated_data):
-        product = validated_data["product"]
-        garment = validated_data["garment"]
         user = self.context["request"].user
-
         cart, _ = catalog.models.Cart.objects.get_or_create(user=user)
+
         cart_item, created = catalog.models.CartItem.objects.get_or_create(
             product=product,
             garment=garment,
             cart=cart,
             defaults={catalog.models.CartItem.quantity.field.name: 1},
         )
+        if cart_item.quantity + created > garment.count:
+            raise rest_framework.serializers.ValidationError(
+                {"form_error": "Недостаточно товара на складе"}
+            )
+
+        data["product"] = product
+        data["garment"] = garment
+        data["cart"] = cart
+        data["cart_item"] = (cart_item, created)
+
+        return data
+
+    def create(self, validated_data):
+        product = validated_data["product"]
+        garment = validated_data["garment"]
+        cart_item, created = validated_data["cart_item"]
 
         if not created:
             cart_item.quantity = (
