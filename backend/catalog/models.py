@@ -683,6 +683,47 @@ class OrderManager(django.db.models.Manager):
                             f"__{Product.main_image.related.name}"
                         ),
                         (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.secondary_image.related.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.category.field.name}"
+                        ),
+                        (
+                            f"{OrderItem.garment.field.name}"
+                            f"__{Garment.color.field.name}"
+                        ),
+                    ),
+                ),
+            )
+            .only(
+                Order.id.field.name,
+                Order.status.field.name,
+                Order.items.field.related_query_name(),
+                Order.address.field.name,
+                Order.total_sum.field.name,
+                Order.user.field.name,
+            )
+        )
+
+    def get_orders_with_items_for_staff(self):
+        return (
+            self.get_queryset()
+            .prefetch_related(
+                django.db.models.Prefetch(
+                    Order.items.field.related_query_name(),
+                    queryset=OrderItem.objects.select_related(
+                        OrderItem.product.field.name,
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.main_image.related.name}"
+                        ),
+                        (
+                            f"{OrderItem.product.field.name}"
+                            f"__{Product.secondary_image.related.name}"
+                        ),
+                        (
                             f"{OrderItem.garment.field.name}"
                             f"__{Garment.category.field.name}"
                         ),

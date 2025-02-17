@@ -1,9 +1,14 @@
 import django.db.transaction
+import django_filters
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.status
 import rest_framework.views
 
+import catalog.filters
+import catalog.models
+import catalog.pagination
+import catalog.serializers
 import core.utils
 import staff.documets
 import staff.pagination
@@ -99,4 +104,19 @@ class StaffChatInviteView(rest_framework.views.APIView):
 
         return core.utils.success_response(
             message="Пользователь присоединен к чату",
+        )
+
+
+class StaffOrderListView(rest_framework.generics.ListAPIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+    serializer_class = catalog.serializers.OrderSerializer
+    queryset = catalog.models.Order.objects.get_orders_with_items_for_staff()
+    pagination_class = catalog.pagination.OrderPagination
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_class = catalog.filters.OrderFilter
+
+    def get(self, request, *args, **kwargs):
+        return core.utils.success_response(
+            message="Заказы получены",
+            data=super().get(request, *args, **kwargs).data,
         )
