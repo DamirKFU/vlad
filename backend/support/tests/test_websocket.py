@@ -126,3 +126,35 @@ class TestWebsocket(django.test.TestCase):
         self.assertEqual(text["type"], "chat_history")
         messages = text["messages"]
         self.assertEqual(len(messages), 0)
+
+    async def test_chat_messages_pagination(self):
+        await asgiref.sync.sync_to_async(self.client.login)(
+            username=self.user.username, password="testpass"
+        )
+        headers = [
+            (b"origin", b"..."),
+            (
+                b"cookie",
+                self.client.cookies.output(header="", sep="; ").encode(),
+            ),
+        ]
+        application = channels.auth.AuthMiddlewareStack(
+            support.routing.websocket
+        )
+        communicator = channels.testing.WebsocketCommunicator(
+            application,
+            f"ws/support/chat/{self.chat.id}/",
+            headers=headers,
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+        await communicator.receive_output()
+        await communicator.send_json_to(
+            {"type": "get_chat_history", "page": 1}
+        )
+        event = await communicator.receive_output()
+        text = json.loads(event["text"])
+        self.assertEqual(text["type"], "chat_history")
+        messages = text["messages"]
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0]["content"], self.chat_message.content)

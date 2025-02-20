@@ -83,6 +83,10 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
 
             await self.send_message(message)
 
+        elif message_type == "get_chat_history":
+            page = content.get("page", 1)
+            await self.send_chat_history(page)
+
     async def send_message(self, message):
         await self.channel_layer.group_send(
             self.chat_group_name,
@@ -126,19 +130,23 @@ class ChatConsumer(channels.generic.websocket.AsyncJsonWebsocketConsumer):
     async def save_message(self, **kwargs):
         return await support.models.Message.objects.acreate(**kwargs)
 
-    async def get_chat_history(self):
+    async def get_chat_history(self, page=1):
         messages = []
+        start = (page - 1) * 50
+        end = page * 50
         async for message in (
             support.models.Message.objects.filter(chat_id=self.chat_id)
             .select_related(support.models.Message.user.field.name)
-            .order_by(f"-{support.models.Message.created_at.field.name}")[:50]
+            .order_by(f"-{support.models.Message.created_at.field.name}")[
+                start:end
+            ]
         ):
             messages.append(message)
 
         return messages
 
-    async def send_chat_history(self):
-        messages = await self.get_chat_history()
+    async def send_chat_history(self, page=1):
+        messages = await self.get_chat_history(page)
         await self.send_json(
             {
                 "type": "chat_history",
