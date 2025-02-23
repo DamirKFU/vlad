@@ -240,7 +240,7 @@ class AddToCartSerializer(rest_framework.serializers.Serializer):
             cart=cart,
             defaults={catalog.models.CartItem.quantity.field.name: 1},
         )
-        if cart_item.quantity + created > garment.count:
+        if cart_item.quantity + 1 > garment.count:
             raise rest_framework.serializers.ValidationError(
                 {"form_error": "Недостаточно товара на складе"}
             )
