@@ -107,6 +107,24 @@ class StaffChatInviteView(rest_framework.views.APIView):
         )
 
 
+class ChatDetailView(rest_framework.views.APIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+
+    def delete(self, request, pk, *args, **kwargs):
+        chat = support.models.Chat.objects.get(id=pk)
+        if request.user not in chat.responsible_users.all():
+            return core.utils.error_response(
+                message="Вы не можете удалить этот чат",
+                http_status=rest_framework.status.HTTP_403_FORBIDDEN,
+            )
+
+        chat.is_active = False
+        chat.save(update_fields=[support.models.Chat.is_active.field.name])
+        return core.utils.success_response(
+            message="Чат закрыт",
+        )
+
+
 class StaffOrderListView(rest_framework.generics.ListAPIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
     serializer_class = catalog.serializers.OrderSerializer

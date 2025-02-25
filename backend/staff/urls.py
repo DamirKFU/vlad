@@ -20,4 +20,9 @@ urlpatterns = [
         staff.views.StaffOrderListView.as_view(),
         name="staff_orders",
     ),
+    django.urls.path(
+        "support/chats/<int:pk>/",
+        staff.views.ChatDetailView.as_view(),
+        name="chat_detail",
+    ),
 ]
