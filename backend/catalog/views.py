@@ -274,26 +274,13 @@ class OrderDetailView(rest_framework.views.APIView):
             message="Заказ успешно получен",
         )
 
-    @django.db.transaction.atomic
     def delete(self, request, pk, *args, **kwargs):
-        order = catalog.models.Order.objects.filter(
-            user=request.user,
-            id=pk,
-        ).first()
-
-        if not order:
-            return core.utils.error_response(
-                message="Заказ не найден",
-                http_status=status.HTTP_404_NOT_FOUND,
-            )
-
-        try:
-            order.cancel_order()
-        except django.core.exceptions.ValidationError as e:
-            return core.utils.error_response(
-                message=str(e.message),
-            )
+        task = catalog.tasks.cancel_order_task.delay(
+            order_id=pk, user_id=request.user.id
+        )
 
         return core.utils.success_response(
-            message="Заказ успешно отменен",
+            data={"task_id": task.id},
+            message="Задача отмены заказа запущена",
+            http_status=status.HTTP_201_CREATED,
         )

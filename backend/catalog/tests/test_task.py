@@ -79,3 +79,62 @@ class TestCreateOrderTask(django.test.TransactionTestCase):
         payment_id = order.payment_id
         payment_status = self.yookassa_service.get_status_payment(payment_id)
         self.assertEqual(payment_status, catalog.models.PaymentStatus.PENDING)
+
+
+class TestCancelOrderTask(django.test.TransactionTestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.user = users.models.User.objects.create_user(
+            username="testuser2",
+            password="testpass",
+            email="testuser2@test.com",
+        )
+        cls.order = catalog.models.Order.objects.create(
+            user=cls.user,
+            address="TestAddress",
+            phone="+79991234567",
+            total_sum=50,
+        )
+        cls.category = catalog.models.Category.objects.create(
+            name="TestCategory"
+        )
+        cls.color = catalog.models.Color.objects.create(
+            name="TestColor", color="#000000"
+        )
+        cls.product = catalog.models.Product.objects.create(
+            name="TestProduct", price=100
+        )
+        cls.garment = catalog.models.Garment.objects.create(
+            price=50, category=cls.category, color=cls.color, count=10
+        )
+        cls.order_item = catalog.models.OrderItem.objects.create(
+            order=cls.order,
+            product=cls.product,
+            garment=cls.garment,
+            quantity=1,
+            price=50,
+        )
+        service = payments.services.YooKassaService()
+        payment_data = service.create_payment(
+            cls.order, "http://localhost:8000/"
+        )
+        cls.order.payment_id = payment_data["id"]
+        cls.order.save(
+            update_fields=[catalog.models.Order.payment_id.field.name]
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        users.models.User.objects.all().delete()
+        super().tearDownClass()
+
+    def test_cancel_order_task(self):
+        result = catalog.tasks.cancel_order_task(self.order.id, self.user.id)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["message"], "Заказ успешно отменен")
+        self.order.refresh_from_db()
+        self.assertEqual(
+            self.order.status, catalog.models.OrderStatus.CANCELED
+        )
+        self.garment.refresh_from_db()
+        self.assertEqual(self.garment.count, 11)

@@ -915,41 +915,14 @@ class OrderDetailViewTests(django.test.TestCase):
             expected_items,
         )
 
-    def test_delete_no_valid_order(self):
-        response = self.authorized_client.delete(
-            django.urls.reverse(
-                "api:catalog:order-detail", args=[self.order.id + 1]
-            )
-        )
-        self.assertEqual(response.status_code, http.HTTPStatus.NOT_FOUND)
-
-    def test_delete_order_with_status_not_waiting_payment(self):
-        self.order.status = catalog.models.OrderStatus.PAID
-        self.order.save()
+    def test_cancel_order_task(self):
         response = self.authorized_client.delete(
             django.urls.reverse(
                 "api:catalog:order-detail", args=[self.order.id]
             )
         )
-        self.assertEqual(response.status_code, http.HTTPStatus.BAD_REQUEST)
+        self.assertEqual(response.status_code, http.HTTPStatus.CREATED)
         self.assertEqual(
             response.json()["message"],
-            "Заказ может быть отменен только в статусе ожидания оплаты",
-        )
-
-    def test_delete_valid_order(self):
-        response = self.authorized_client.delete(
-            django.urls.reverse(
-                "api:catalog:order-detail", args=[self.order.id]
-            )
-        )
-        self.assertEqual(response.status_code, http.HTTPStatus.OK)
-        self.garment.refresh_from_db()
-        self.assertEqual(self.garment.count, 11)
-        self.order.refresh_from_db()
-        self.assertEqual(
-            self.order.status, catalog.models.OrderStatus.CANCELED
-        )
-        self.assertEqual(
-            self.order.payment_status, catalog.models.PaymentStatus.CANCELED
+            "Задача отмены заказа запущена",
         )

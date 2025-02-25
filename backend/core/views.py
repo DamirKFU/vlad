@@ -65,7 +65,7 @@ class TaskStatusView(rest_framework.views.APIView):
             )
 
         result = task.get()
-        if "serializer_errors" in result:
+        if result.pop("status") == "error":
             return core.utils.error_response(
                 **result,
                 http_status=status.HTTP_400_BAD_REQUEST,
