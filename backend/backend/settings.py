@@ -32,6 +32,16 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = is_true_env("DEBUG")
 
+YOOKASSA_IPS = [
+    "http://185.71.76.0",
+    "http://185.71.77.0",
+    "http://2a02:5180::",
+    "http://77.75.153.0",
+    "http://77.75.154.128",
+    "http://77.75.156.11",
+    "http://77.75.156.35",
+]
+
 TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 
 DEFAULT_VERIFED_EMAIL = is_true_env("DEFAULT_VERIFED_EMAIL")
@@ -40,6 +50,9 @@ ALLOWED_HOSTS = list_env("ALLOWED_HOSTS")
 
 CSRF_TRUSTED_ORIGINS = list_env("CSRF_TRUSTED_ORIGINS")
 CORS_ALLOWED_ORIGINS = list_env("CORS_ALLOWED_ORIGINS")
+
+CORS_ALLOWED_ORIGINS.extend(YOOKASSA_IPS)
+CSRF_TRUSTED_ORIGINS.extend(YOOKASSA_IPS)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
