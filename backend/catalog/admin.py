@@ -133,3 +133,8 @@ class ProductAdmin(django.contrib.admin.ModelAdmin):
         ProductSecondaryImageInline,
         ProductAdditionalImageInline,
     ]
+
+
+@django.contrib.admin.register(catalog.models.Order)
+class OrderAdmin(django.contrib.admin.ModelAdmin):
+    list_display = (catalog.models.Order.id.field.name,)
