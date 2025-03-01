@@ -875,7 +875,7 @@ class OrderDetailViewTests(django.test.TestCase):
             self.order.status, catalog.models.OrderStatus.WAITING_PAYMENT
         )
         self.assertEqual(
-            self.order.payment_status, catalog.models.PaymentStatus.PENDING
+            self.order.payment_status, catalog.models.PaymentStatus.SUCCEEDED
         )
         self.assertEqual(
             self.order.confirmation_url, self.payment_data["confirmation_url"]

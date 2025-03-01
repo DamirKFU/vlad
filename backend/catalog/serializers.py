@@ -6,7 +6,6 @@ import catalog.tasks
 import catalog.utils
 import catalog.validators
 import payments.services
-import staff.logs
 
 
 ADDITIONAL_IMAGES_RELATED_QUERY_NAME = (
@@ -461,51 +460,6 @@ class OrderDetailSerializer(rest_framework.serializers.ModelSerializer):
             "status": obj.status,
             "status_display": obj.get_status_display(),
         }
-
-    def to_representation(self, instance):
-        status = instance.status
-        if status != catalog.models.OrderStatus.WAITING_PAYMENT:
-            return super().to_representation(instance)
-
-        status_payment = (
-            payments.services.YooKassaService().get_status_payment(
-                instance.payment_id
-            )
-        )
-        instance.payment_status = status_payment
-        if status_payment == catalog.models.PaymentStatus.SUCCEEDED:
-            staff.logs.log_order_status_change(
-                instance,
-                None,
-                instance.status,
-                catalog.models.OrderStatus.PAID,
-            )
-
-            staff.logs.log_order_status_change(
-                instance,
-                None,
-                catalog.models.OrderStatus.PAID,
-                catalog.models.OrderStatus.IN_WORK,
-            )
-            instance.status = catalog.models.OrderStatus.IN_WORK
-
-        if status_payment == catalog.models.PaymentStatus.CANCELED:
-            staff.logs.log_order_status_change(
-                instance,
-                None,
-                instance.status,
-                catalog.models.OrderStatus.CANCELED,
-            )
-            instance.status = catalog.models.OrderStatus.CANCELED
-
-        instance.save(
-            update_fields=[
-                catalog.models.Order.status.field.name,
-                catalog.models.Order.payment_status.field.name,
-            ]
-        )
-
-        return super().to_representation(instance)
 
     def get_confirmation_url(self, obj):
         if obj.status == catalog.models.OrderStatus.WAITING_PAYMENT:
