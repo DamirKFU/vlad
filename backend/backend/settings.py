@@ -266,7 +266,6 @@ LOGGING = {
             "version": 1,
             "message_type": "django",
             "fqdn": False,
-            "tags": ["django"],
         },
         "console": {
             "level": "INFO",
@@ -277,6 +276,11 @@ LOGGING = {
     "loggers": {
         "grafana": {
             "handlers": ["logstash"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "default": {
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": True,
         },
