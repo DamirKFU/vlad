@@ -337,5 +337,11 @@ class Command(django.core.management.base.BaseCommand):
             # Возвращаемся в главное меню
             send_welcome(message)
 
+        @telegram_bot.bot.bot.message_handler(
+            func=lambda message: message.text == "🏠 Вернуться в меню"
+        )
+        def back_to_menu(message):
+            send_welcome(message)
+
         self.stdout.write("Bot started")
         telegram_bot.bot.bot.infinity_polling()
