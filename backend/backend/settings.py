@@ -333,3 +333,14 @@ CACHES = {
         "LOCATION": os.getenv("REDIS_CACHE_URL", "redis://localhost:6379/1"),
     }
 }
+
+
+MIN_BONUS_EXCHANGE = 5
+
+PROMO_COSTS = {
+    5: 5,
+    10: 10,
+}
+
+
+ADMIN_TELEGRAM_ID = [5062457306]

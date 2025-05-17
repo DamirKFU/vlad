@@ -16,8 +16,6 @@ def notify_status_change(sender, instance, **kwargs):
     if old_instance is None:
         return
 
-    return
-
     if (
         old_instance.status != instance.status
         and old_instance.user.telegram_id

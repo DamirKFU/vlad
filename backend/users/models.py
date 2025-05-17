@@ -94,6 +94,7 @@ class User(django.contrib.auth.models.AbstractUser):
         UserRole,
         verbose_name="роли",
         related_name="users",
+        blank=True,
     )
     telegram_id = django.db.models.CharField(
         "ID в Telegram",
@@ -101,6 +102,12 @@ class User(django.contrib.auth.models.AbstractUser):
         help_text="ID в Telegram",
         null=True,
         blank=True,
+    )
+
+    bonus = django.db.models.PositiveIntegerField(
+        verbose_name="бонус",
+        help_text="бонусы пользователя",
+        default=0,
     )
 
     class Meta(django.contrib.auth.models.AbstractUser.Meta):

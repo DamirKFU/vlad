@@ -10,6 +10,8 @@ class UserAdmin(django.contrib.admin.ModelAdmin):
         users.models.User.email.field.name,
         users.models.User.roles.field.name,
         users.models.User.telegram_id.field.name,
+        users.models.User.bonus.field.name,
+        users.models.User.is_superuser.field.name,
     )
     readonly_fields = (
         users.models.User.username.field.name,
